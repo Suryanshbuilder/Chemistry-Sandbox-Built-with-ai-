@@ -1,0 +1,4159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChemLab — Interactive Chemistry Sandbox</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --panel: #141e2e;
+    --border: rgba(100,160,255,0.15);
+    --border2: rgba(100,160,255,0.3);
+    --text: #e8f0ff;
+    --text2: #8ba3cc;
+    --text3: #4a6080;
+    --accent: #4a9eff;
+    --accent2: #6eb8ff;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+    --pink: #ec4899;
+    --glow: 0 0 20px rgba(74,158,255,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── LANDING ── */
+  #landing {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #6eb8ff 0%, #a855f7 50%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  .hero p {
+    color: var(--text2);
+    font-size: 1.1rem;
+    margin-top: 0.75rem;
+    max-width: 500px;
+  }
+
+  .enter-btn {
+    margin-top: 2rem;
+    padding: 0.875rem 2.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #4a9eff, #a855f7);
+    color: #fff;
+    letter-spacing: 0.03em;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 30px rgba(74,158,255,0.4);
+  }
+  .enter-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 40px rgba(74,158,255,0.6); }
+
+  .pt-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 2.5rem 0 1rem;
+  }
+
+  /* Periodic Table Grid */
+  .periodic-table {
+    display: grid;
+    grid-template-columns: repeat(18, minmax(0, 1fr));
+    gap: 3px;
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  .pt-element {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border: 1px solid transparent;
+    position: relative;
+    min-width: 0;
+    padding: 2px;
+  }
+
+  .pt-element:hover {
+    transform: scale(1.25);
+    z-index: 10;
+    border-color: rgba(255,255,255,0.4);
+    box-shadow: 0 0 15px rgba(255,255,255,0.2);
+  }
+
+  .pt-element .sym {
+    font-size: clamp(0.45rem, 1.2vw, 0.85rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .pt-element .num {
+    font-size: clamp(0.3rem, 0.7vw, 0.5rem);
+    opacity: 0.6;
+    line-height: 1;
+  }
+  .pt-element .name-label {
+    font-size: clamp(0.25rem, 0.55vw, 0.4rem);
+    opacity: 0.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: none;
+  }
+
+  /* Category colors */
+  .cat-alkali     { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .cat-alkaline   { background: rgba(249,115,22,0.2); color: #fdba74; }
+  .cat-transition { background: rgba(234,179,8,0.2); color: #fde047; }
+  .cat-post       { background: rgba(34,197,94,0.2); color: #86efac; }
+  .cat-metalloid  { background: rgba(6,182,212,0.2); color: #67e8f9; }
+  .cat-nonmetal   { background: rgba(74,158,255,0.2); color: #93c5fd; }
+  .cat-halogen    { background: rgba(168,85,247,0.2); color: #d8b4fe; }
+  .cat-noble      { background: rgba(236,72,153,0.2); color: #f9a8d4; }
+  .cat-lanthanide { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+  .cat-actinide   { background: rgba(20,184,166,0.2); color: #5eead4; }
+
+  /* ── SANDBOX ── */
+  #sandbox {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+
+  .lab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .lab-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--accent2), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header-btns { display: flex; gap: 0.5rem; }
+
+  .hbtn {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .hbtn:hover { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+  .hbtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Main Lab Layout */
+  .lab-layout {
+    display: flex;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  /* Left: Element Panel */
+  .element-panel {
+    width: 220px;
+    min-width: 180px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .element-search {
+    margin: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    font-size: 0.8rem;
+    width: calc(100% - 1rem);
+    outline: none;
+  }
+  .element-search:focus { border-color: var(--accent); }
+
+  /* ── ATOM QUANTITY SELECTOR ── */
+  .qty-selector {
+    margin: 0.4rem 0.5rem 0.1rem;
+    padding: 0.45rem 0.6rem;
+    background: var(--bg3);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .qty-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .qty-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .qty-btn {
+    flex: 1;
+    padding: 4px 0;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .qty-btn:hover { background: var(--bg2); color: var(--text); border-color: var(--border2); }
+
+  .qty-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(74,158,255,0.35);
+  }
+
+  .cat-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 0 0.5rem 0.5rem;
+  }
+  .cat-chip {
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.6rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .cat-chip:hover, .cat-chip.on { opacity: 1; border-color: rgba(255,255,255,0.2); }
+
+  .element-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.25rem 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+
+  .el-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 7px;
+    border-radius: 7px;
+    cursor: grab;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    user-select: none;
+  }
+  .el-item:hover { background: var(--bg3); border-color: var(--border); }
+  .el-item:active { cursor: grabbing; }
+
+  .el-add-btn {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-left: auto;
+  }
+  .el-item:hover .el-add-btn { opacity: 1; }
+  .el-add-btn:hover { transform: scale(1.15); }
+
+  .el-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .el-info { min-width: 0; }
+  .el-info .el-sym { font-size: 0.8rem; font-weight: 600; }
+  .el-info .el-name { font-size: 0.65rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Center: Sandbox Stage */
+  .stage-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Time bar */
+  .time-bar-wrap {
+    padding: 0.5rem 1rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .time-label {
+    font-size: 0.7rem;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .time-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .time-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.1s linear;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+  }
+
+  .time-controls {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .tc-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .tc-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+
+  .time-val {
+    font-size: 0.7rem;
+    color: var(--accent2);
+    min-width: 45px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Beaker stage canvas */
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(74,158,255,0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(168,85,247,0.04) 0%, transparent 50%),
+      var(--bg);
+  }
+
+  /* Grid overlay */
+  .stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(100,160,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100,160,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Vessels */
+  .vessel {
+    position: absolute;
+    cursor: pointer;
+    user-select: none;
+    transition: filter 0.2s;
+  }
+  .vessel:hover { filter: brightness(1.2); }
+  .vessel.drag-over { filter: brightness(1.4) drop-shadow(0 0 8px var(--accent)); }
+
+  /* Dropped element chips on stage */
+  .stage-element {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: 2px solid rgba(255,255,255,0.15);
+    transition: box-shadow 0.2s;
+    user-select: none;
+    z-index: 10;
+  }
+  .stage-element:hover { box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+  .stage-element .se-num { font-size: 0.5rem; opacity: 0.5; }
+  .stage-element .se-sym { line-height: 1; }
+
+  /* Beaker contents visualization */
+  .beaker-content {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    min-height: 10px;
+    border-radius: 0 0 10px 10px;
+    transition: height 0.4s, background 0.5s;
+    overflow: hidden;
+  }
+
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    animation: bubbleUp 1.5s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes bubbleUp {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-80px) scale(0.5); opacity: 0; }
+  }
+
+  /* Reaction overlay — anchored to bottom so sparks/explosions above stay visible */
+  .reaction-overlay {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 50;
+    padding: 0 1rem 1rem;
+  }
+
+  .reaction-card {
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 16px 16px 12px 12px;
+    padding: 1rem 1.5rem 1.1rem;
+    max-width: 540px;
+    width: 100%;
+    pointer-events: all;
+    animation: slideUp 0.35s cubic-bezier(0.34,1.4,0.64,1);
+    position: relative;
+    box-shadow: 0 -4px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--border2);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(60px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* legacy slideIn kept for Learn page uses */
+  @keyframes slideIn {
+    from { transform: scale(0.7) translateY(30px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .reaction-card .r-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .reaction-card .r-equation {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--accent2);
+    background: var(--bg3);
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    border-left: 3px solid var(--accent);
+  }
+
+  .reaction-card .r-desc {
+    font-size: 0.8rem;
+    color: var(--text2);
+    line-height: 1.5;
+    margin-top: 0.5rem;
+  }
+
+  .reaction-card .r-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .r-explosion { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .r-acid      { background: rgba(234,179,8,0.2); color: #fde047; border: 1px solid rgba(234,179,8,0.3); }
+  .r-neutral   { background: rgba(6,182,212,0.2); color: #67e8f9; border: 1px solid rgba(6,182,212,0.3); }
+  .r-synthesis { background: rgba(34,197,94,0.2); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .r-precipitate { background: rgba(168,85,247,0.2); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.3); }
+  .r-combustion { background: rgba(249,115,22,0.2); color: #fdba74; border: 1px solid rgba(249,115,22,0.3); }
+
+  .close-btn {
+    position: absolute;
+    top: 0.75rem; right: 0.75rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text3);
+    width: 24px; height: 24px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .close-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  /* Explosion FX */
+  .explosion-fx {
+    position: absolute;
+    pointer-events: none;
+    z-index: 200;
+  }
+
+  .spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: sparkFly 0.8s ease-out forwards;
+  }
+
+  @keyframes sparkFly {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* Beaker SVG style */
+  .beaker-svg text {
+    font-family: 'Segoe UI', sans-serif;
+    fill: var(--text2);
+    font-size: 11px;
+  }
+
+  /* Right: Info panel */
+  .info-panel {
+    width: 240px;
+    min-width: 200px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+
+  .info-section {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .info-section h3 {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.5rem;
+  }
+
+  .beaker-list .b-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    margin-bottom: 3px;
+    background: var(--bg3);
+  }
+
+  .b-item .b-name { color: var(--text); }
+  .b-item .b-count {
+    font-size: 0.65rem;
+    background: rgba(74,158,255,0.2);
+    color: var(--accent2);
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .empty-msg {
+    font-size: 0.75rem;
+    color: var(--text3);
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  /* Reaction log */
+  .reaction-log { display: flex; flex-direction: column; gap: 4px; }
+
+  .log-item {
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    border-left: 3px solid;
+    background: var(--bg3);
+    line-height: 1.4;
+  }
+
+  .log-explosion { border-color: var(--red); }
+  .log-acid { border-color: var(--yellow); }
+  .log-synthesis { border-color: var(--green); }
+  .log-neutral { border-color: var(--cyan); }
+  .log-precipitate { border-color: var(--purple); }
+  .log-combustion { border-color: var(--orange); }
+
+  .clear-btn {
+    margin: 0.5rem;
+    padding: 0.35rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .clear-btn:hover { background: rgba(239,68,68,0.1); color: var(--red); border-color: var(--red); }
+
+  /* Floating particle */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: drift linear forwards;
+  }
+
+  @keyframes drift {
+    0% { transform: translate(0, 0); opacity: 0.8; }
+    100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+  }
+
+  /* Tooltip */
+  .el-tooltip {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.78rem;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    max-width: 200px;
+    display: none;
+  }
+  .el-tooltip .tt-sym { font-size: 1.4rem; font-weight: 700; }
+  .el-tooltip .tt-name { font-size: 0.8rem; color: var(--text2); }
+  .el-tooltip .tt-info { font-size: 0.68rem; color: var(--text3); margin-top: 4px; line-height: 1.4; }
+
+  /* Add beaker button */
+  .add-vessel-btn {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border: none;
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(74,158,255,0.4);
+    transition: transform 0.2s;
+  }
+  .add-vessel-btn:hover { transform: scale(1.1); }
+
+  /* Mix button on beaker */
+  /* vessel button row */
+  .vessel-btn-row {
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+    min-height: 24px;
+    white-space: nowrap;
+    width: max-content;
+    pointer-events: none;
+  }
+
+  .vessel-wrap:hover .vessel-btn-row { opacity: 1; pointer-events: auto; }
+
+  .vbtn {
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    white-space: nowrap;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+
+  .vbtn-mix  { background: linear-gradient(90deg, var(--accent), var(--purple)); }
+  .vbtn-pour { background: linear-gradient(90deg, #06b6d4, #4a9eff); }
+  .vbtn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  .vessel-wrap:hover .mix-btn { opacity: 1; }
+
+  .vessel-wrap {
+    position: absolute;
+  }
+
+  .vessel-wrap.pour-animating {
+    transition: left 0.55s cubic-bezier(0.4, 0, 0.2, 1), top 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 40;
+  }
+
+  /* Scrollbar for element list */
+  .element-list::-webkit-scrollbar { width: 4px; }
+  .element-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .info-panel::-webkit-scrollbar { width: 4px; }
+  .info-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* pulse animation on active beaker */
+  @keyframes beakerPulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(74,158,255,0.5)); }
+    50% { filter: drop-shadow(0 0 14px rgba(74,158,255,0.9)); }
+  }
+
+  .vessel-active svg { animation: beakerPulse 2s ease-in-out infinite; }
+
+  /* Shake animation — CSS class avoids recursive-setTimeout race conditions */
+  @keyframes vesselShake {
+    0%,100% { transform: translate(0,0); }
+    10% { transform: translate(-5px,-2px); }
+    20% { transform: translate(5px,2px); }
+    30% { transform: translate(-4px,2px); }
+    40% { transform: translate(4px,-2px); }
+    50% { transform: translate(-3px,1px); }
+    60% { transform: translate(3px,-1px); }
+    70% { transform: translate(-2px,1px); }
+    80% { transform: translate(2px,-1px); }
+    90% { transform: translate(-1px,0); }
+  }
+  .vessel-shaking { animation: vesselShake 0.6s ease-in-out !important; }
+
+  /* Stat row */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 0.72rem;
+  }
+  .stat-row .s-key { color: var(--text3); }
+  .stat-row .s-val { color: var(--text); font-weight: 500; }
+
+  /* Landing legend */
+  .pt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 0.75rem;
+    justify-content: center;
+    max-width: 1000px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    color: var(--text2);
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* element glow on hover */
+  @keyframes elementGlow {
+    0% { box-shadow: 0 0 0 0 rgba(74,158,255,0.6); }
+    50% { box-shadow: 0 0 8px 3px rgba(74,158,255,0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.0); }
+  }
+
+  /* ── POUR MODE ── */
+  .stage.pour-mode { cursor: crosshair; }
+
+  .vessel-wrap.pour-source .vessel {
+    filter: drop-shadow(0 0 10px rgba(74,158,255,0.9));
+    animation: tiltPour 0.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes tiltPour {
+    from { transform: rotate(-8deg); }
+    to   { transform: rotate(-14deg); }
+  }
+
+  /* Active pouring tilt — vessel leans far over toward the target */
+  .vessel-wrap.pour-source.pour-active .vessel {
+    animation: none;
+    transform: rotate(-58deg);
+    transform-origin: 75% 15%;
+    transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+    filter: drop-shadow(0 0 14px rgba(74,158,255,1));
+  }
+
+  .vessel-wrap.pour-target .vessel {
+    filter: drop-shadow(0 0 12px rgba(34,197,94,0.8));
+    cursor: pointer !important;
+  }
+
+  .pour-hint {
+    position: absolute;
+    top: -62px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(74,158,255,0.15);
+    border: 1px solid rgba(74,158,255,0.4);
+    color: var(--accent2);
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: 0.05em;
+  }
+
+  .pour-cancel-btn {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.4);
+    color: #fca5a5;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 50;
+    display: none;
+    transition: background 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .pour-cancel-btn:hover { background: rgba(239,68,68,0.28); }
+  .pour-cancel-btn.visible { display: block; }
+
+  /* Liquid pour arc animation */
+  .pour-arc {
+    position: absolute;
+    pointer-events: none;
+    z-index: 60;
+  }
+
+  @keyframes pourDrop {
+    0%   { stroke-dashoffset: 300; opacity: 0.9; }
+    80%  { stroke-dashoffset: 0;   opacity: 0.9; }
+    100% { stroke-dashoffset: 0;   opacity: 0; }
+  }
+
+  .pour-arc path {
+    stroke-dasharray: 300;
+    stroke-dashoffset: 300;
+    animation: pourDrop 0.7s ease-in forwards;
+  }
+
+  /* Splash drops */
+  @keyframes splashDrop {
+    0%   { transform: translate(0,0) scale(1); opacity: 0.9; }
+    100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
+  }
+
+  .splash-drop {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: splashDrop 0.5s ease-out forwards;
+    z-index: 61;
+  }
+
+  /* ── LEARN PAGE ── */
+  #learnPage {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg);
+  }
+
+  .learn-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 2rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .learn-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--accent2), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .learn-body {
+    width: 100%;
+    max-width: 900px;
+    padding: 3rem 2rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+  }
+
+  .learn-intro {
+    text-align: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .learn-intro .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: rgba(74,158,255,0.1);
+    border: 1px solid rgba(74,158,255,0.2);
+    padding: 3px 12px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+
+  .learn-intro h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #6eb8ff 0%, #a855f7 60%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+  }
+
+  .learn-intro p {
+    color: var(--text2);
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Section */
+  .learn-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-tag {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .section-subtitle {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-top: 2px;
+  }
+
+  .section-desc {
+    color: var(--text2);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  .section-desc strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Bond / diagram cards */
+  .diagram-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .diagram-card:hover { border-color: var(--border2); }
+
+  .diagram-card .dc-top {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .dc-visual {
+    width: 260px;
+    min-width: 220px;
+    background: var(--bg3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .dc-content {
+    flex: 1;
+    padding: 1.75rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+
+  .dc-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .dc-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .dc-subtitle {
+    font-size: 0.78rem;
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  .dc-text {
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.65;
+    margin-top: 0.25rem;
+  }
+
+  .dc-text strong { color: var(--text); }
+
+  .dc-formula {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--accent2);
+    margin-top: 0.5rem;
+    width: fit-content;
+  }
+
+  /* Reaction type grid */
+  .rxn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .rxn-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.4rem 1.4rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+
+  .rxn-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+  }
+
+  .rxn-card .rxn-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  .rxn-card .rxn-name {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .rxn-card .rxn-formula {
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg3);
+    width: fit-content;
+    border-left: 3px solid;
+  }
+
+  .rxn-card .rxn-desc {
+    font-size: 0.82rem;
+    color: var(--text2);
+    line-height: 1.55;
+  }
+
+  .rxn-card .rxn-example {
+    font-size: 0.72rem;
+    color: var(--text3);
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .rxn-card .rxn-example span {
+    font-family: 'Courier New', monospace;
+    color: var(--text2);
+  }
+
+  /* Animated atom */
+  @keyframes orbit {
+    from { transform: rotate(0deg) translateX(var(--r)) rotate(0deg); }
+    to   { transform: rotate(360deg) translateX(var(--r)) rotate(-360deg); }
+  }
+
+  @keyframes orbitRev {
+    from { transform: rotate(0deg) translateX(var(--r)) rotate(0deg); }
+    to   { transform: rotate(-360deg) translateX(var(--r)) rotate(360deg); }
+  }
+
+  .electron-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin: -4px 0 0 -4px;
+    animation: orbit linear infinite;
+  }
+
+  .orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Key takeaway box */
+  .key-box {
+    background: linear-gradient(135deg, rgba(74,158,255,0.08), rgba(168,85,247,0.08));
+    border: 1px solid rgba(74,158,255,0.25);
+    border-radius: 12px;
+    padding: 1.1rem 1.4rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .key-box .kb-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .key-box .kb-text {
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .key-box .kb-text strong { color: var(--accent2); }
+
+  /* CTA at bottom */
+  .learn-cta {
+    text-align: center;
+    padding: 2rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .learn-cta h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent2), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .learn-cta p { color: var(--text2); font-size: 0.88rem; max-width: 400px; }
+
+  .cta-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+  .cta-btn-primary {
+    padding: 0.7rem 2rem;
+    border-radius: 50px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border: none;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 20px rgba(74,158,255,0.3);
+  }
+  .cta-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 30px rgba(74,158,255,0.5); }
+
+  .cta-btn-secondary {
+    padding: 0.7rem 2rem;
+    border-radius: 50px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cta-btn-secondary:hover { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+
+  @media (max-width: 680px) {
+    .diagram-card .dc-top { flex-direction: column; }
+    .dc-visual { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); }
+    .rxn-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<div id="landing">
+  <div class="hero">
+    <div style="font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text3);margin-bottom:0.5rem">⚗ Interactive Laboratory</div>
+    <h1>ChemLab</h1>
+    <p>Explore all 118 elements. Drag, mix, and watch reactions unfold in real time.</p>
+    <button class="enter-btn" onclick="openSandbox()">Open the Lab →</button>
+    <button class="enter-btn" onclick="showLearn()" style="margin-top:0.75rem;background:transparent;border:2px solid rgba(74,158,255,0.4);color:var(--accent2);box-shadow:none;font-size:0.9rem;padding:0.7rem 2rem">📖 Learn Reactions</button>
+  </div>
+
+  <div class="pt-title">All 118 Elements — Hover to explore</div>
+
+  <div class="periodic-table" id="ptLanding"></div>
+
+  <div class="pt-legend" id="ptLegend"></div>
+</div>
+
+<!-- SANDBOX -->
+<div id="sandbox">
+  <div class="lab-header">
+    <h2>⚗ ChemLab Sandbox</h2>
+    <div class="header-btns">
+      <button class="hbtn" onclick="addVessel('beaker')">+ Beaker</button>
+      <button class="hbtn" onclick="addVessel('flask')">+ Flask</button>
+      <button class="hbtn" onclick="addVessel('tube')">+ Test Tube</button>
+      <button class="hbtn" onclick="clearAll()">Clear All</button>
+      <button class="hbtn" onclick="showLearn()">📖 Learn</button>
+      <button class="hbtn" onclick="showLanding()">← Periodic Table</button>
+    </div>
+  </div>
+
+  <div class="lab-layout">
+    <!-- LEFT: Element Panel -->
+    <div class="element-panel">
+      <div class="panel-header">Elements</div>
+      <input class="element-search" id="elSearch" placeholder="Search elements..." oninput="filterElements()">
+
+      <!-- ATOM QUANTITY SELECTOR -->
+      <div class="qty-selector">
+        <span class="qty-label">Atoms per drop</span>
+        <div class="qty-btns" id="qtyBtns">
+          <button class="qty-btn active" data-qty="1" onclick="setAtomQty(1)">×1</button>
+          <button class="qty-btn" data-qty="2" onclick="setAtomQty(2)">×2</button>
+          <button class="qty-btn" data-qty="3" onclick="setAtomQty(3)">×3</button>
+          <button class="qty-btn" data-qty="5" onclick="setAtomQty(5)">×5</button>
+        </div>
+        <input type="hidden" id="atomQty" value="1">
+      </div>
+
+      <div class="cat-filter" id="catFilter"></div>
+      <div class="element-list" id="elementList"></div>
+    </div>
+
+    <!-- CENTER: Stage -->
+    <div class="stage-area">
+      <div class="time-bar-wrap">
+        <span class="time-label">REACTION TIME</span>
+        <div class="time-track">
+          <div class="time-fill" id="timeFill" style="width:0%"></div>
+        </div>
+        <div class="time-controls">
+          <button class="tc-btn" id="playBtn" onclick="toggleTimer()" title="Play/Pause">▶</button>
+          <button class="tc-btn" onclick="resetTimer()" title="Reset">↺</button>
+        </div>
+        <span class="time-val" id="timeVal">0.0s</span>
+      </div>
+
+      <div class="stage" id="stage"
+        ondragover="event.preventDefault()"
+        ondrop="onStageDrop(event)"
+        onclick="onStageClick(event)">
+
+        <button class="pour-cancel-btn" id="pourCancelBtn" onclick="cancelPour()">✕ Cancel Pour</button>
+        <button class="add-vessel-btn" onclick="addVessel('beaker')" title="Add beaker">+</button>
+      </div>
+
+      <div class="reaction-overlay" id="reactionOverlay" style="display:none"></div>
+    </div>
+
+    <!-- RIGHT: Info Panel -->
+    <div class="info-panel">
+      <div class="info-section">
+        <h3>Selected Vessel</h3>
+        <div id="vesselInfo">
+          <div class="empty-msg">Click a vessel to select</div>
+        </div>
+      </div>
+      <div class="info-section">
+        <h3>Reaction Log</h3>
+        <div class="reaction-log" id="reactionLog">
+          <div class="empty-msg">No reactions yet</div>
+        </div>
+        <button class="clear-btn" onclick="clearLog()">Clear Log</button>
+      </div>
+      <div class="info-section">
+        <h3>Tips</h3>
+        <div style="font-size:0.7rem;color:var(--text3);line-height:1.6">
+          • Drag elements onto a vessel to add them<br>
+          • Click <strong style="color:var(--accent2)">+</strong> on any element to add to the selected vessel<br>
+          • Use <strong style="color:var(--accent2)">Atoms per drop</strong> to add ×1–5 atoms at once<br>
+          • Click a vessel to select it, then use Mix<br>
+          • 🫗 Pour combines two vessels and reacts<br>
+          • Click legend items on the Periodic Table to filter by category
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEARN PAGE -->
+<div id="learnPage">
+  <div class="learn-header">
+    <h2>📖 Learn Reactions</h2>
+    <div class="header-btns">
+      <button class="hbtn" onclick="showLanding()">← Periodic Table</button>
+      <button class="hbtn" onclick="openSandbox()">Open the Lab →</button>
+    </div>
+  </div>
+
+  <div class="learn-body">
+
+    <!-- INTRO -->
+    <div class="learn-intro">
+      <div class="tag">⚗ Chemistry Fundamentals</div>
+      <h1>How Atoms Bond &amp; React</h1>
+      <p>Every substance in the universe — from the salt on your table to the water in your cells — exists because atoms decided to link up. Here's exactly how that happens, and what it looks like when they rearrange.</p>
+    </div>
+
+    <!-- SECTION 1: IONIC -->
+    <div class="learn-section">
+      <div class="section-tag">
+        <div class="section-num" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)">01</div>
+        <div>
+          <div class="section-title">Ionic Bonding</div>
+          <div class="section-subtitle" style="color:var(--text3)">The "Give &amp; Take"</div>
+        </div>
+      </div>
+
+      <p class="section-desc">
+        Some atoms are hoarders. Others are desperately trying to offload electrons.
+        An ionic bond is what happens when these two personality types find each other — one atom
+        <strong>completely hands over</strong> one or more electrons to another.
+        Once the transfer is done, both atoms carry an electric charge (now called <strong>ions</strong>),
+        and opposite charges attract — locking them together like tiny magnets.
+      </p>
+
+      <div class="diagram-card">
+        <div class="dc-top">
+          <div class="dc-visual">
+            <!-- Animated ionic bond SVG: Na → Cl -->
+            <svg width="210" height="160" viewBox="0 0 210 160" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+              <defs>
+                <radialGradient id="naGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#fca5a5" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#ef4444" stop-opacity="0.1"/>
+                </radialGradient>
+                <radialGradient id="clGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#d8b4fe" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#a855f7" stop-opacity="0.1"/>
+                </radialGradient>
+              </defs>
+              <!-- Na atom -->
+              <g transform="translate(52,80)">
+                <circle r="22" fill="url(#naGrad)" stroke="#ef4444" stroke-width="1" stroke-opacity="0.5"/>
+                <circle r="34" fill="none" stroke="rgba(239,68,68,0.2)" stroke-width="1" stroke-dasharray="2,3"/>
+                <circle r="46" fill="none" stroke="rgba(239,68,68,0.15)" stroke-width="1" stroke-dasharray="2,3"/>
+                <text text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700" fill="#fca5a5">Na</text>
+                <!-- Inner electrons (2) -->
+                <g style="transform-origin:0 0">
+                  <circle cx="34" cy="0" r="3.5" fill="#fca5a5" style="animation: orbit 2s linear infinite; --r:34px"/>
+                  <circle cx="-34" cy="0" r="3.5" fill="#fca5a5" style="animation: orbit 2s linear infinite 1s; --r:34px"/>
+                </g>
+                <!-- Outer electron (1) — the one being "lost" -->
+                <circle id="ionElec" cx="46" cy="0" r="4" fill="#fff" stroke="#fca5a5" stroke-width="1.5"
+                  style="animation: orbit 3.5s linear infinite; --r:46px; opacity:0.9"/>
+              </g>
+              <!-- Arrow -->
+              <g transform="translate(100,80)">
+                <line x1="4" y1="0" x2="14" y2="0" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="3,2"/>
+                <polygon points="14,0 10,-3 10,3" fill="rgba(255,255,255,0.25)"/>
+              </g>
+              <!-- Cl atom -->
+              <g transform="translate(158,80)">
+                <circle r="22" fill="url(#clGrad)" stroke="#a855f7" stroke-width="1" stroke-opacity="0.5"/>
+                <circle r="34" fill="none" stroke="rgba(168,85,247,0.2)" stroke-width="1" stroke-dasharray="2,3"/>
+                <circle r="46" fill="none" stroke="rgba(168,85,247,0.2)" stroke-width="1" stroke-dasharray="2,3"/>
+                <text text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700" fill="#d8b4fe">Cl</text>
+                <!-- 7 outer electrons orbiting -->
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 0s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 0.57s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 1.14s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 1.71s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 2.28s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 2.85s; --r:46px"/>
+                <circle cx="46" cy="0" r="3.5" fill="#d8b4fe" style="animation: orbit 4s linear infinite 3.42s; --r:46px"/>
+              </g>
+              <!-- Charges -->
+              <text x="52" y="136" text-anchor="middle" font-size="10" fill="#fca5a5" font-weight="600">Na⁺</text>
+              <text x="158" y="136" text-anchor="middle" font-size="10" fill="#d8b4fe" font-weight="600">Cl⁻</text>
+              <text x="105" y="18" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.35)">electron transfer</text>
+            </svg>
+          </div>
+          <div class="dc-content">
+            <div class="dc-label" style="color:#fca5a5">Ionic Bond · Example</div>
+            <div class="dc-title">Sodium + Chlorine → Salt</div>
+            <div class="dc-subtitle">The classic give-and-take</div>
+            <p class="dc-text">
+              Sodium has <strong>one lonely outer electron</strong> it desperately wants to shed. Chlorine has seven outer electrons and needs just one more for a full shell. When they meet, Na hands its electron directly to Cl — no sharing, no negotiation.
+              <br><br>
+              Suddenly, sodium has a <strong>+1 charge</strong> and chlorine has a <strong>−1 charge</strong>. Opposites attract, they snap together, and you get NaCl — table salt.
+            </p>
+            <div class="dc-formula">Na → Na⁺ + e⁻ &nbsp;|&nbsp; Cl + e⁻ → Cl⁻</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="key-box">
+        <div class="kb-icon">💡</div>
+        <div class="kb-text"><strong>The Rule of 8 (Octet Rule):</strong> Atoms are happiest when their outermost shell holds exactly 8 electrons — just like the noble gases. Ionic bonding is simply atoms doing whatever it takes to reach that magic number, even if it means fully surrendering an electron.</div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: COVALENT -->
+    <div class="learn-section">
+      <div class="section-tag">
+        <div class="section-num" style="background:rgba(6,182,212,0.15);color:#67e8f9;border:1px solid rgba(6,182,212,0.3)">02</div>
+        <div>
+          <div class="section-title">Covalent Bonding</div>
+          <div class="section-subtitle" style="color:var(--text3)">The "Perfect Partnership"</div>
+        </div>
+      </div>
+
+      <p class="section-desc">
+        Not every atom is willing to give up electrons entirely. When two atoms are similarly matched,
+        they strike a deal: <strong>share the electrons instead</strong>. Both atoms overlap their outer shells,
+        and the shared electrons zip back and forth between them — belonging to both nuclei simultaneously.
+        The result is a bond that's often even stronger than an ionic one.
+      </p>
+
+      <div class="diagram-card">
+        <div class="dc-top">
+          <div class="dc-visual">
+            <!-- Animated covalent bond SVG: H₂O -->
+            <svg width="210" height="165" viewBox="0 0 210 165" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+              <defs>
+                <radialGradient id="oGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#67e8f9" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.1"/>
+                </radialGradient>
+                <radialGradient id="hGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.6"/>
+                  <stop offset="100%" stop-color="#4a9eff" stop-opacity="0.1"/>
+                </radialGradient>
+              </defs>
+              <!-- H left -->
+              <g transform="translate(38,100)">
+                <circle r="16" fill="url(#hGrad)" stroke="#4a9eff" stroke-width="1" stroke-opacity="0.6"/>
+                <circle r="26" fill="none" stroke="rgba(74,158,255,0.2)" stroke-width="1" stroke-dasharray="2,3"/>
+                <text text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="#93c5fd">H</text>
+                <circle cx="26" cy="0" r="3.5" fill="#93c5fd" style="animation: orbit 2.5s linear infinite; --r:26px"/>
+              </g>
+              <!-- O center -->
+              <g transform="translate(105,75)">
+                <circle r="24" fill="url(#oGrad)" stroke="#06b6d4" stroke-width="1.5" stroke-opacity="0.7"/>
+                <circle r="38" fill="none" stroke="rgba(6,182,212,0.18)" stroke-width="1" stroke-dasharray="2,3"/>
+                <text text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="#67e8f9">O</text>
+                <!-- 4 lone pair electrons (non-bonding) -->
+                <circle cx="-38" cy="0" r="3.5" fill="#67e8f9" style="animation: orbit 3s linear infinite; --r:38px"/>
+                <circle cx="-38" cy="0" r="3.5" fill="#67e8f9" style="animation: orbit 3s linear infinite 0.4s; --r:38px"/>
+                <circle cx="38" cy="0" r="3.5" fill="#67e8f9" style="animation: orbit 3s linear infinite 1.5s; --r:38px"/>
+                <circle cx="38" cy="0" r="3.5" fill="#67e8f9" style="animation: orbit 3s linear infinite 1.9s; --r:38px"/>
+              </g>
+              <!-- H right -->
+              <g transform="translate(172,100)">
+                <circle r="16" fill="url(#hGrad)" stroke="#4a9eff" stroke-width="1" stroke-opacity="0.6"/>
+                <circle r="26" fill="none" stroke="rgba(74,158,255,0.2)" stroke-width="1" stroke-dasharray="2,3"/>
+                <text text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="#93c5fd">H</text>
+                <circle cx="-26" cy="0" r="3.5" fill="#93c5fd" style="animation: orbit 2.5s linear infinite 1.25s; --r:26px"/>
+              </g>
+              <!-- Bond lines -->
+              <line x1="62" y1="94" x2="83" y2="84" stroke="rgba(255,255,255,0.2)" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="128" y1="84" x2="148" y2="94" stroke="rgba(255,255,255,0.2)" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- Shared electron pulses -->
+              <circle cx="72" cy="89" r="4.5" fill="white" opacity="0.55" style="animation: orbit 2.5s linear infinite; --r:0px">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.2s" repeatCount="indefinite"/>
+                <animate attributeName="cx" values="62;83;62" dur="2.5s" repeatCount="indefinite"/>
+                <animate attributeName="cy" values="94;84;94" dur="2.5s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="138" cy="89" r="4.5" fill="white" opacity="0.55">
+                <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.2s" begin="0.6s" repeatCount="indefinite"/>
+                <animate attributeName="cx" values="128;148;128" dur="2.5s" repeatCount="indefinite"/>
+                <animate attributeName="cy" values="84;94;84" dur="2.5s" repeatCount="indefinite"/>
+              </circle>
+              <!-- Labels -->
+              <text x="105" y="150" text-anchor="middle" font-size="13" font-weight="700" fill="#67e8f9">H₂O</text>
+              <text x="105" y="165" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.3)">water molecule</text>
+              <text x="73" y="72" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)">shared pair</text>
+              <text x="140" y="72" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.35)">shared pair</text>
+            </svg>
+          </div>
+          <div class="dc-content">
+            <div class="dc-label" style="color:#67e8f9">Covalent Bond · Example</div>
+            <div class="dc-title">Hydrogen + Oxygen → Water</div>
+            <div class="dc-subtitle">Mutual sharing for mutual stability</div>
+            <p class="dc-text">
+              Oxygen needs 2 more electrons to fill its outer shell. Each hydrogen atom needs just 1. Rather than stealing, they <strong>overlap their outer shells</strong> and share the electrons equally — each shared pair counts toward both atoms' totals.
+              <br><br>
+              Oxygen gets credit for 2 shared pairs (satisfying its need for 2), and each hydrogen gets credit for 1 pair (satisfying its need for 1). Everyone's shell is full. <strong>That's a water molecule.</strong>
+            </p>
+            <div class="dc-formula" style="color:#67e8f9;border-color:rgba(6,182,212,0.3)">2H₂ + O₂ → 2H₂O</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="key-box" style="border-color:rgba(6,182,212,0.25);background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(74,158,255,0.06))">
+        <div class="kb-icon">💡</div>
+        <div class="kb-text"><strong>Ionic vs. Covalent at a glance:</strong> Ionic bonds form between a <strong style="color:#fca5a5">metal</strong> and a <strong style="color:#d8b4fe">non-metal</strong> (electron transfer). Covalent bonds form between two <strong style="color:#93c5fd">non-metals</strong> (electron sharing). The electronegativity difference between the atoms determines which type wins.</div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: REACTION TYPES -->
+    <div class="learn-section">
+      <div class="section-tag">
+        <div class="section-num" style="background:rgba(234,179,8,0.15);color:#fde047;border:1px solid rgba(234,179,8,0.3)">03</div>
+        <div>
+          <div class="section-title">The 4 Core Reaction Types</div>
+          <div class="section-subtitle" style="color:var(--text3)">How bonds break and reform</div>
+        </div>
+      </div>
+
+      <p class="section-desc">
+        A chemical reaction is just atoms <strong>breaking old bonds and forming new ones</strong>. The atoms themselves never disappear — they simply swap partners. Every reaction in chemistry, no matter how complex, can be traced back to one of these four fundamental patterns.
+      </p>
+
+      <div class="rxn-grid">
+
+        <!-- Synthesis -->
+        <div class="rxn-card" style="border-color:rgba(34,197,94,0.2)">
+          <div class="rxn-icon">✨</div>
+          <div class="rxn-name" style="color:#86efac">Synthesis</div>
+          <div class="rxn-formula" style="color:#86efac;border-color:#22c55e">A + B → AB</div>
+          <p class="rxn-desc">Two or more separate elements or compounds <strong>join together</strong> to build a single, more complex product. Think of it as two solo acts forming a band.</p>
+          <div class="rxn-example">Real world: <span>2Na + Cl₂ → 2NaCl</span> (making salt)</div>
+        </div>
+
+        <!-- Decomposition -->
+        <div class="rxn-card" style="border-color:rgba(239,68,68,0.2)">
+          <div class="rxn-icon">💥</div>
+          <div class="rxn-name" style="color:#fca5a5">Decomposition</div>
+          <div class="rxn-formula" style="color:#fca5a5;border-color:#ef4444">AB → A + B</div>
+          <p class="rxn-desc">The exact reverse of synthesis — a single compound <strong>breaks apart</strong> into two or more simpler substances. Usually requires energy input (heat, light, or electricity).</p>
+          <div class="rxn-example">Real world: <span>2H₂O → 2H₂ + O₂</span> (electrolysis of water)</div>
+        </div>
+
+        <!-- Single Replacement -->
+        <div class="rxn-card" style="border-color:rgba(249,115,22,0.2)">
+          <div class="rxn-icon">🔀</div>
+          <div class="rxn-name" style="color:#fdba74">Single Replacement</div>
+          <div class="rxn-formula" style="color:#fdba74;border-color:#f97316">A + BC → AC + B</div>
+          <p class="rxn-desc">A lone element <strong>muscles into an existing compound</strong> and kicks out the less reactive element — like a more popular person cutting into a dance. Reactivity determines who wins.</p>
+          <div class="rxn-example">Real world: <span>Zn + 2HCl → ZnCl₂ + H₂↑</span></div>
+        </div>
+
+        <!-- Double Replacement -->
+        <div class="rxn-card" style="border-color:rgba(168,85,247,0.2)">
+          <div class="rxn-icon">🔄</div>
+          <div class="rxn-name" style="color:#d8b4fe">Double Replacement</div>
+          <div class="rxn-formula" style="color:#d8b4fe;border-color:#a855f7">AB + CD → AD + CB</div>
+          <p class="rxn-desc">Two compounds meet and <strong>completely swap partners</strong> — like a square dance where everyone switches. Common in precipitation reactions, where the new pairing creates an insoluble solid.</p>
+          <div class="rxn-example">Real world: <span>AgNO₃ + NaCl → AgCl↓ + NaNO₃</span></div>
+        </div>
+      </div>
+
+      <div class="key-box" style="border-color:rgba(234,179,8,0.25);background:linear-gradient(135deg,rgba(234,179,8,0.06),rgba(249,115,22,0.06))">
+        <div class="kb-icon">⚖️</div>
+        <div class="kb-text"><strong>Conservation of Mass:</strong> In every single reaction above, atoms are never created or destroyed. Count the atoms on both sides of any equation — they always balance. This is Antoine Lavoisier's law, and it has held without a single exception for over 250 years.</div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="learn-cta">
+      <div style="font-size:2rem">⚗</div>
+      <h3>Ready to Try It Yourself?</h3>
+      <p>Head into the lab and mix elements in real vessels. Watch ionic bonds snap together, see covalent molecules form, and trigger all four reaction types live.</p>
+      <div class="cta-btns">
+        <button class="cta-btn-primary" onclick="openSandbox()">Open the Lab →</button>
+        <button class="cta-btn-secondary" onclick="showLanding()">← Periodic Table</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="el-tooltip" id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════
+// DATA
+// ═══════════════════════════════
+
+const CATEGORIES = {
+  alkali:     { label: 'Alkali Metal',      color: '#ef4444', bg: 'rgba(239,68,68,0.2)' },
+  alkaline:   { label: 'Alkaline Earth',    color: '#f97316', bg: 'rgba(249,115,22,0.2)' },
+  transition: { label: 'Transition Metal',  color: '#eab308', bg: 'rgba(234,179,8,0.2)' },
+  post:       { label: 'Post-transition',   color: '#22c55e', bg: 'rgba(34,197,94,0.2)' },
+  metalloid:  { label: 'Metalloid',         color: '#06b6d4', bg: 'rgba(6,182,212,0.2)' },
+  nonmetal:   { label: 'Nonmetal',          color: '#4a9eff', bg: 'rgba(74,158,255,0.2)' },
+  halogen:    { label: 'Halogen',           color: '#a855f7', bg: 'rgba(168,85,247,0.2)' },
+  noble:      { label: 'Noble Gas',         color: '#ec4899', bg: 'rgba(236,72,153,0.2)' },
+  lanthanide: { label: 'Lanthanide',        color: '#6366f1', bg: 'rgba(99,102,241,0.2)' },
+  actinide:   { label: 'Actinide',          color: '#14b8a6', bg: 'rgba(20,184,166,0.2)' },
+};
+
+const ELEMENTS = [
+  {n:1,sym:'H',name:'Hydrogen',cat:'nonmetal',mass:1.008,state:'Gas',group:1,period:1,col:1,row:1,desc:'Most abundant element in the universe. Highly flammable gas.'},
+  {n:2,sym:'He',name:'Helium',cat:'noble',mass:4.003,state:'Gas',group:18,period:1,col:18,row:1,desc:'Noble gas. Second most abundant in universe. Used in balloons.'},
+  {n:3,sym:'Li',name:'Lithium',cat:'alkali',mass:6.941,state:'Solid',group:1,period:2,col:1,row:2,desc:'Soft alkali metal. Reacts vigorously with water. Used in batteries.'},
+  {n:4,sym:'Be',name:'Beryllium',cat:'alkaline',mass:9.012,state:'Solid',group:2,period:2,col:2,row:2,desc:'Lightweight alkaline earth metal. Toxic. Used in aerospace.'},
+  {n:5,sym:'B',name:'Boron',cat:'metalloid',mass:10.81,state:'Solid',group:13,period:2,col:13,row:2,desc:'Metalloid essential to plants. Used in borosilicate glass.'},
+  {n:6,sym:'C',name:'Carbon',cat:'nonmetal',mass:12.011,state:'Solid',group:14,period:2,col:14,row:2,desc:'Basis of all organic life. Forms diamond and graphite.'},
+  {n:7,sym:'N',name:'Nitrogen',cat:'nonmetal',mass:14.007,state:'Gas',group:15,period:2,col:15,row:2,desc:'78% of Earth\'s atmosphere. Essential for life as ammonia.'},
+  {n:8,sym:'O',name:'Oxygen',cat:'nonmetal',mass:15.999,state:'Gas',group:16,period:2,col:16,row:2,desc:'21% of atmosphere. Required for combustion and respiration.'},
+  {n:9,sym:'F',name:'Fluorine',cat:'halogen',mass:18.998,state:'Gas',group:17,period:2,col:17,row:2,desc:'Most electronegative element. Extremely reactive halogen.'},
+  {n:10,sym:'Ne',name:'Neon',cat:'noble',mass:20.18,state:'Gas',group:18,period:2,col:18,row:2,desc:'Noble gas used in neon signs. Inert and colorless.'},
+  {n:11,sym:'Na',name:'Sodium',cat:'alkali',mass:22.99,state:'Solid',group:1,period:3,col:1,row:3,desc:'Soft metal. Explodes in water. Essential electrolyte.'},
+  {n:12,sym:'Mg',name:'Magnesium',cat:'alkaline',mass:24.305,state:'Solid',group:2,period:3,col:2,row:3,desc:'Lightweight metal. Burns bright white. Essential to chlorophyll.'},
+  {n:13,sym:'Al',name:'Aluminium',cat:'post',mass:26.982,state:'Solid',group:13,period:3,col:13,row:3,desc:'Most abundant metal in Earth\'s crust. Lightweight and corrosion-resistant.'},
+  {n:14,sym:'Si',name:'Silicon',cat:'metalloid',mass:28.085,state:'Solid',group:14,period:3,col:14,row:3,desc:'Second most abundant element in crust. Basis of semiconductors.'},
+  {n:15,sym:'P',name:'Phosphorus',cat:'nonmetal',mass:30.974,state:'Solid',group:15,period:3,col:15,row:3,desc:'Essential for DNA and ATP. White phosphorus is highly reactive.'},
+  {n:16,sym:'S',name:'Sulfur',cat:'nonmetal',mass:32.06,state:'Solid',group:16,period:3,col:16,row:3,desc:'Yellow solid. Used in gunpowder and sulfuric acid production.'},
+  {n:17,sym:'Cl',name:'Chlorine',cat:'halogen',mass:35.45,state:'Gas',group:17,period:3,col:17,row:3,desc:'Toxic yellowish-green gas. Used in water purification and PVC.'},
+  {n:18,sym:'Ar',name:'Argon',cat:'noble',mass:39.948,state:'Gas',group:18,period:3,col:18,row:3,desc:'Noble gas making up ~1% of atmosphere. Used in welding.'},
+  {n:19,sym:'K',name:'Potassium',cat:'alkali',mass:39.098,state:'Solid',group:1,period:4,col:1,row:4,desc:'Reacts violently with water, producing purple flame. Essential electrolyte.'},
+  {n:20,sym:'Ca',name:'Calcium',cat:'alkaline',mass:40.078,state:'Solid',group:2,period:4,col:2,row:4,desc:'Essential for bones and teeth. Reacts with water to form slaked lime.'},
+  {n:21,sym:'Sc',name:'Scandium',cat:'transition',mass:44.956,state:'Solid',group:3,period:4,col:3,row:4,desc:'Rare transition metal used in aluminum alloys and sports equipment.'},
+  {n:22,sym:'Ti',name:'Titanium',cat:'transition',mass:47.867,state:'Solid',group:4,period:4,col:4,row:4,desc:'Strong, light, corrosion-resistant metal used in aerospace and medicine.'},
+  {n:23,sym:'V',name:'Vanadium',cat:'transition',mass:50.942,state:'Solid',group:5,period:4,col:5,row:4,desc:'Hard grey metal. Used in steel alloys for high-strength applications.'},
+  {n:24,sym:'Cr',name:'Chromium',cat:'transition',mass:51.996,state:'Solid',group:6,period:4,col:6,row:4,desc:'Hard, lustrous metal. Used in stainless steel and chrome plating.'},
+  {n:25,sym:'Mn',name:'Manganese',cat:'transition',mass:54.938,state:'Solid',group:7,period:4,col:7,row:4,desc:'Hard brittle metal. Used in steel production and dry cell batteries.'},
+  {n:26,sym:'Fe',name:'Iron',cat:'transition',mass:55.845,state:'Solid',group:8,period:4,col:8,row:4,desc:'Most used metal on Earth. Rusts in moist air. Foundation of steel.'},
+  {n:27,sym:'Co',name:'Cobalt',cat:'transition',mass:58.933,state:'Solid',group:9,period:4,col:9,row:4,desc:'Blue pigment source. Used in superalloys and lithium batteries.'},
+  {n:28,sym:'Ni',name:'Nickel',cat:'transition',mass:58.693,state:'Solid',group:10,period:4,col:10,row:4,desc:'Silvery metal resistant to corrosion. Used in coins and stainless steel.'},
+  {n:29,sym:'Cu',name:'Copper',cat:'transition',mass:63.546,state:'Solid',group:11,period:4,col:11,row:4,desc:'Excellent conductor. Turns green with patina. Essential trace element.'},
+  {n:30,sym:'Zn',name:'Zinc',cat:'transition',mass:65.38,state:'Solid',group:12,period:4,col:12,row:4,desc:'Bluish metal. Used in galvanization, brass, and as an immune supplement.'},
+  {n:31,sym:'Ga',name:'Gallium',cat:'post',mass:69.723,state:'Solid',group:13,period:4,col:13,row:4,desc:'Melts in your hand at 29.8°C. Used in semiconductors and LEDs.'},
+  {n:32,sym:'Ge',name:'Germanium',cat:'metalloid',mass:72.63,state:'Solid',group:14,period:4,col:14,row:4,desc:'Metalloid used in fiber optics and infrared optics.'},
+  {n:33,sym:'As',name:'Arsenic',cat:'metalloid',mass:74.922,state:'Solid',group:15,period:4,col:15,row:4,desc:'Toxic metalloid. Formerly used as a poison. Used in semiconductors.'},
+  {n:34,sym:'Se',name:'Selenium',cat:'nonmetal',mass:78.971,state:'Solid',group:16,period:4,col:16,row:4,desc:'Essential trace element. Used in photocopiers and solar cells.'},
+  {n:35,sym:'Br',name:'Bromine',cat:'halogen',mass:79.904,state:'Liquid',group:17,period:4,col:17,row:4,desc:'Only nonmetal liquid at room temperature. Red-brown fuming liquid.'},
+  {n:36,sym:'Kr',name:'Krypton',cat:'noble',mass:83.798,state:'Gas',group:18,period:4,col:18,row:4,desc:'Dense noble gas. Used in high-power lasers and certain light bulbs.'},
+  {n:37,sym:'Rb',name:'Rubidium',cat:'alkali',mass:85.468,state:'Solid',group:1,period:5,col:1,row:5,desc:'Soft silvery-white metal. Ignites spontaneously in air.'},
+  {n:38,sym:'Sr',name:'Strontium',cat:'alkaline',mass:87.62,state:'Solid',group:2,period:5,col:2,row:5,desc:'Silvery metal. Sr compounds give red color in fireworks.'},
+  {n:39,sym:'Y',name:'Yttrium',cat:'transition',mass:88.906,state:'Solid',group:3,period:5,col:3,row:5,desc:'Silvery metal used in phosphors for LEDs and superconductors.'},
+  {n:40,sym:'Zr',name:'Zirconium',cat:'transition',mass:91.224,state:'Solid',group:4,period:5,col:4,row:5,desc:'Strong corrosion-resistant metal used in nuclear reactors.'},
+  {n:41,sym:'Nb',name:'Niobium',cat:'transition',mass:92.906,state:'Solid',group:5,period:5,col:5,row:5,desc:'Soft grey ductile metal. Used in superalloys and superconductors.'},
+  {n:42,sym:'Mo',name:'Molybdenum',cat:'transition',mass:95.96,state:'Solid',group:6,period:5,col:6,row:5,desc:'Hard silvery metal with high melting point. Essential micronutrient.'},
+  {n:43,sym:'Tc',name:'Technetium',cat:'transition',mass:98,state:'Solid',group:7,period:5,col:7,row:5,desc:'First artificially produced element. Radioactive. Used in medical imaging.'},
+  {n:44,sym:'Ru',name:'Ruthenium',cat:'transition',mass:101.07,state:'Solid',group:8,period:5,col:8,row:5,desc:'Hard rare platinum group metal. Used in electrical contacts.'},
+  {n:45,sym:'Rh',name:'Rhodium',cat:'transition',mass:102.91,state:'Solid',group:9,period:5,col:9,row:5,desc:'Rare, hard, silver-white metal. Used in catalytic converters.'},
+  {n:46,sym:'Pd',name:'Palladium',cat:'transition',mass:106.42,state:'Solid',group:10,period:5,col:10,row:5,desc:'Rare silvery-white metal. Used in catalytic converters and jewelry.'},
+  {n:47,sym:'Ag',name:'Silver',cat:'transition',mass:107.87,state:'Solid',group:11,period:5,col:11,row:5,desc:'Best conductor of electricity. Antimicrobial. Used in jewelry and photography.'},
+  {n:48,sym:'Cd',name:'Cadmium',cat:'transition',mass:112.41,state:'Solid',group:12,period:5,col:12,row:5,desc:'Soft bluish-white metal. Toxic. Used in Ni-Cd batteries and pigments.'},
+  {n:49,sym:'In',name:'Indium',cat:'post',mass:114.82,state:'Solid',group:13,period:5,col:13,row:5,desc:'Soft silvery metal. Used in touchscreens (ITO) and soldering.'},
+  {n:50,sym:'Sn',name:'Tin',cat:'post',mass:118.71,state:'Solid',group:14,period:5,col:14,row:5,desc:'Silvery metal. Resistant to corrosion. Used to coat steel cans.'},
+  {n:51,sym:'Sb',name:'Antimony',cat:'metalloid',mass:121.76,state:'Solid',group:15,period:5,col:15,row:5,desc:'Metalloid used in alloys, flame retardants, and semiconductors.'},
+  {n:52,sym:'Te',name:'Tellurium',cat:'metalloid',mass:127.6,state:'Solid',group:16,period:5,col:16,row:5,desc:'Brittle metalloid used in solar panels and rewritable discs.'},
+  {n:53,sym:'I',name:'Iodine',cat:'halogen',mass:126.9,state:'Solid',group:17,period:5,col:17,row:5,desc:'Purple vapor. Essential for thyroid hormones. Antiseptic.'},
+  {n:54,sym:'Xe',name:'Xenon',cat:'noble',mass:131.29,state:'Gas',group:18,period:5,col:18,row:5,desc:'Dense noble gas. Used in flash lamps, lasers, and ion propulsion.'},
+  {n:55,sym:'Cs',name:'Cesium',cat:'alkali',mass:132.91,state:'Solid',group:1,period:6,col:1,row:6,desc:'Softest metal. Explodes on contact with water. Used in atomic clocks.'},
+  {n:56,sym:'Ba',name:'Barium',cat:'alkaline',mass:137.33,state:'Solid',group:2,period:6,col:2,row:6,desc:'Soft silvery alkaline earth metal. Toxic. Used in drilling fluids.'},
+  {n:72,sym:'Hf',name:'Hafnium',cat:'transition',mass:178.49,state:'Solid',group:4,period:6,col:4,row:6,desc:'Shiny metal. Used in nuclear control rods and microprocessors.'},
+  {n:73,sym:'Ta',name:'Tantalum',cat:'transition',mass:180.95,state:'Solid',group:5,period:6,col:5,row:6,desc:'Hard, rare metal. Highly corrosion resistant. Used in capacitors.'},
+  {n:74,sym:'W',name:'Tungsten',cat:'transition',mass:183.84,state:'Solid',group:6,period:6,col:6,row:6,desc:'Highest melting point of all metals (3422°C). Used in light bulbs.'},
+  {n:75,sym:'Re',name:'Rhenium',cat:'transition',mass:186.21,state:'Solid',group:7,period:6,col:7,row:6,desc:'Dense silvery metal. Second highest melting point. Used in jet engines.'},
+  {n:76,sym:'Os',name:'Osmium',cat:'transition',mass:190.23,state:'Solid',group:8,period:6,col:8,row:6,desc:'Densest naturally occurring element. Hard, brittle, blue-white.'},
+  {n:77,sym:'Ir',name:'Iridium',cat:'transition',mass:192.22,state:'Solid',group:9,period:6,col:9,row:6,desc:'Very hard metal. Used in spark plugs and defined the kilogram.'},
+  {n:78,sym:'Pt',name:'Platinum',cat:'transition',mass:195.08,state:'Solid',group:10,period:6,col:10,row:6,desc:'Precious corrosion-resistant metal. Used in jewelry and catalysts.'},
+  {n:79,sym:'Au',name:'Gold',cat:'transition',mass:196.97,state:'Solid',group:11,period:6,col:11,row:6,desc:'Dense yellow metal. Most ductile metal. Excellent conductor.'},
+  {n:80,sym:'Hg',name:'Mercury',cat:'transition',mass:200.59,state:'Liquid',group:12,period:6,col:12,row:6,desc:'Only liquid metal at room temperature. Toxic. Used in thermometers.'},
+  {n:81,sym:'Tl',name:'Thallium',cat:'post',mass:204.38,state:'Solid',group:13,period:6,col:13,row:6,desc:'Soft grey post-transition metal. Extremely toxic.'},
+  {n:82,sym:'Pb',name:'Lead',cat:'post',mass:207.2,state:'Solid',group:14,period:6,col:14,row:6,desc:'Dense soft metal. Toxic. Used in radiation shielding and batteries.'},
+  {n:83,sym:'Bi',name:'Bismuth',cat:'post',mass:208.98,state:'Solid',group:15,period:6,col:15,row:6,desc:'Colorful crystalline metal. Low toxicity. Used in cosmetics and medicines.'},
+  {n:84,sym:'Po',name:'Polonium',cat:'metalloid',mass:209,state:'Solid',group:16,period:6,col:16,row:6,desc:'Highly radioactive metalloid discovered by Marie Curie. Used in antistatic brushes. Emits intense alpha radiation.'},
+  {n:85,sym:'At',name:'Astatine',cat:'halogen',mass:210,state:'Solid',group:17,period:6,col:17,row:6,desc:'Rarest naturally occurring element. Highly radioactive halogen.'},
+  {n:86,sym:'Rn',name:'Radon',cat:'noble',mass:222,state:'Gas',group:18,period:6,col:18,row:6,desc:'Radioactive noble gas. Health hazard in buildings. Heaviest noble gas.'},
+  {n:87,sym:'Fr',name:'Francium',cat:'alkali',mass:223,state:'Solid',group:1,period:7,col:1,row:7,desc:'Most unstable naturally occurring element. Extremely radioactive alkali metal.'},
+  {n:88,sym:'Ra',name:'Radium',cat:'alkaline',mass:226,state:'Solid',group:2,period:7,col:2,row:7,desc:'Radioactive alkaline earth metal. Discovered by Marie Curie.'},
+  {n:104,sym:'Rf',name:'Rutherfordium',cat:'transition',mass:267,state:'Solid',group:4,period:7,col:4,row:7,desc:'Synthetic radioactive element. Named after Ernest Rutherford.'},
+  {n:105,sym:'Db',name:'Dubnium',cat:'transition',mass:268,state:'Solid',group:5,period:7,col:5,row:7,desc:'Synthetic element. Named after Dubna, Russia. Very short half-life.'},
+  {n:106,sym:'Sg',name:'Seaborgium',cat:'transition',mass:271,state:'Solid',group:6,period:7,col:6,row:7,desc:'Synthetic element. Named after Glenn T. Seaborg.'},
+  {n:107,sym:'Bh',name:'Bohrium',cat:'transition',mass:272,state:'Solid',group:7,period:7,col:7,row:7,desc:'Synthetic radioactive element. Named after Niels Bohr.'},
+  {n:108,sym:'Hs',name:'Hassium',cat:'transition',mass:270,state:'Solid',group:8,period:7,col:8,row:7,desc:'Synthetic element. Named after Hesse, Germany.'},
+  {n:109,sym:'Mt',name:'Meitnerium',cat:'transition',mass:276,state:'Solid',group:9,period:7,col:9,row:7,desc:'Synthetic element. Named after Lise Meitner.'},
+  {n:110,sym:'Ds',name:'Darmstadtium',cat:'transition',mass:281,state:'Solid',group:10,period:7,col:10,row:7,desc:'Synthetic element. Named after Darmstadt, Germany.'},
+  {n:111,sym:'Rg',name:'Roentgenium',cat:'transition',mass:280,state:'Solid',group:11,period:7,col:11,row:7,desc:'Synthetic element. Named after Wilhelm Röntgen.'},
+  {n:112,sym:'Cn',name:'Copernicium',cat:'transition',mass:285,state:'Liquid',group:12,period:7,col:12,row:7,desc:'Synthetic element. Predicted to be a gas or liquid at room temperature.'},
+  {n:113,sym:'Nh',name:'Nihonium',cat:'post',mass:284,state:'Solid',group:13,period:7,col:13,row:7,desc:'Synthetic element. Named after Japan (Nihon). First element found in Asia.'},
+  {n:114,sym:'Fl',name:'Flerovium',cat:'post',mass:289,state:'Solid',group:14,period:7,col:14,row:7,desc:'Synthetic element. Named after Flerov Laboratory in Dubna.'},
+  {n:115,sym:'Mc',name:'Moscovium',cat:'post',mass:288,state:'Solid',group:15,period:7,col:15,row:7,desc:'Synthetic element. Named after Moscow Oblast.'},
+  {n:116,sym:'Lv',name:'Livermorium',cat:'post',mass:293,state:'Solid',group:16,period:7,col:16,row:7,desc:'Synthetic element. Named after Lawrence Livermore National Laboratory.'},
+  {n:117,sym:'Ts',name:'Tennessine',cat:'halogen',mass:294,state:'Solid',group:17,period:7,col:17,row:7,desc:'Synthetic element. Named after Tennessee. Second heaviest halogen.'},
+  {n:118,sym:'Og',name:'Oganesson',cat:'noble',mass:294,state:'Gas',group:18,period:7,col:18,row:7,desc:'Heaviest element ever synthesized. Named after physicist Yuri Oganessian.'},
+  // Lanthanides (row 8, starting col 3)
+  {n:57,sym:'La',name:'Lanthanum',cat:'lanthanide',mass:138.91,state:'Solid',group:3,period:6,col:3,row:8,desc:'Soft rare earth metal. Used in camera lenses and hydrogen storage.'},
+  {n:58,sym:'Ce',name:'Cerium',cat:'lanthanide',mass:140.12,state:'Solid',group:4,period:6,col:4,row:8,desc:'Most abundant lanthanide. Used in catalytic converters and glass polishing.'},
+  {n:59,sym:'Pr',name:'Praseodymium',cat:'lanthanide',mass:140.91,state:'Solid',group:5,period:6,col:5,row:8,desc:'Soft silvery metal. Used in strong permanent magnets and aircraft engines.'},
+  {n:60,sym:'Nd',name:'Neodymium',cat:'lanthanide',mass:144.24,state:'Solid',group:6,period:6,col:6,row:8,desc:'Makes the strongest permanent magnets. Used in motors and headphones.'},
+  {n:61,sym:'Pm',name:'Promethium',cat:'lanthanide',mass:145,state:'Solid',group:7,period:6,col:7,row:8,desc:'Only radioactive lanthanide with no stable isotopes. Very rare.'},
+  {n:62,sym:'Sm',name:'Samarium',cat:'lanthanide',mass:150.36,state:'Solid',group:8,period:6,col:8,row:8,desc:'Hard silvery metal. Used in magnets, neutron capture, and cancer treatment.'},
+  {n:63,sym:'Eu',name:'Europium',cat:'lanthanide',mass:151.96,state:'Solid',group:9,period:6,col:9,row:8,desc:'Highly reactive lanthanide. Gives red/blue in euro banknote fluorescence.'},
+  {n:64,sym:'Gd',name:'Gadolinium',cat:'lanthanide',mass:157.25,state:'Solid',group:10,period:6,col:10,row:8,desc:'Strongly paramagnetic. Used in MRI contrast agents.'},
+  {n:65,sym:'Tb',name:'Terbium',cat:'lanthanide',mass:158.93,state:'Solid',group:11,period:6,col:11,row:8,desc:'Rare earth metal used in green phosphors and solid-state devices.'},
+  {n:66,sym:'Dy',name:'Dysprosium',cat:'lanthanide',mass:162.5,state:'Solid',group:12,period:6,col:12,row:8,desc:'Highest magnetic strength per atom. Used in electric vehicle motors.'},
+  {n:67,sym:'Ho',name:'Holmium',cat:'lanthanide',mass:164.93,state:'Solid',group:13,period:6,col:13,row:8,desc:'Soft silvery metal with high magnetic saturation. Used in lasers.'},
+  {n:68,sym:'Er',name:'Erbium',cat:'lanthanide',mass:167.26,state:'Solid',group:14,period:6,col:14,row:8,desc:'Lanthanide used in fiber optic amplifiers (EDFA) and pink pigments.'},
+  {n:69,sym:'Tm',name:'Thulium',cat:'lanthanide',mass:168.93,state:'Solid',group:15,period:6,col:15,row:8,desc:'Rarest lanthanide. Used in portable X-ray devices.'},
+  {n:70,sym:'Yb',name:'Ytterbium',cat:'lanthanide',mass:173.04,state:'Solid',group:16,period:6,col:16,row:8,desc:'Soft silvery metal. Used in improving stainless steel and in atomic clocks.'},
+  {n:71,sym:'Lu',name:'Lutetium',cat:'lanthanide',mass:174.97,state:'Solid',group:17,period:6,col:17,row:8,desc:'Hardest and densest lanthanide. Used in PET scan detectors.'},
+  // Actinides (row 9, starting col 3)
+  {n:89,sym:'Ac',name:'Actinium',cat:'actinide',mass:227,state:'Solid',group:3,period:7,col:3,row:9,desc:'Radioactive metal. Strong neutron emitter. Named after Greek for beam.'},
+  {n:90,sym:'Th',name:'Thorium',cat:'actinide',mass:232.04,state:'Solid',group:4,period:7,col:4,row:9,desc:'Weakly radioactive. Three times more abundant than uranium. Nuclear fuel.'},
+  {n:91,sym:'Pa',name:'Protactinium',cat:'actinide',mass:231.04,state:'Solid',group:5,period:7,col:5,row:9,desc:'Rare, toxic, radioactive actinide. Intermediate in uranium decay series.'},
+  {n:92,sym:'U',name:'Uranium',cat:'actinide',mass:238.03,state:'Solid',group:6,period:7,col:6,row:9,desc:'Radioactive heavy metal. Fissile material for nuclear power and weapons.'},
+  {n:93,sym:'Np',name:'Neptunium',cat:'actinide',mass:237,state:'Solid',group:7,period:7,col:7,row:9,desc:'First synthetic transuranium element. Radioactive. Named after Neptune.'},
+  {n:94,sym:'Pu',name:'Plutonium',cat:'actinide',mass:244,state:'Solid',group:8,period:7,col:8,row:9,desc:'Fissile radioactive metal. Used in nuclear warheads and power plants.'},
+  {n:95,sym:'Am',name:'Americium',cat:'actinide',mass:243,state:'Solid',group:9,period:7,col:9,row:9,desc:'Synthetic element. Used in household smoke detectors.'},
+  {n:96,sym:'Cm',name:'Curium',cat:'actinide',mass:247,state:'Solid',group:10,period:7,col:10,row:9,desc:'Synthetic transuranium element. Named after Marie and Pierre Curie.'},
+  {n:97,sym:'Bk',name:'Berkelium',cat:'actinide',mass:247,state:'Solid',group:11,period:7,col:11,row:9,desc:'Synthetic element. Named after Berkeley, California.'},
+  {n:98,sym:'Cf',name:'Californium',cat:'actinide',mass:251,state:'Solid',group:12,period:7,col:12,row:9,desc:'Synthetic element. Strong neutron emitter. Used in cancer treatment.'},
+  {n:99,sym:'Es',name:'Einsteinium',cat:'actinide',mass:252,state:'Solid',group:13,period:7,col:13,row:9,desc:'Synthetic element. Named after Albert Einstein. Very short half-life.'},
+  {n:100,sym:'Fm',name:'Fermium',cat:'actinide',mass:257,state:'Solid',group:14,period:7,col:14,row:9,desc:'Synthetic element. Named after Enrico Fermi. Only made in tiny amounts.'},
+  {n:101,sym:'Md',name:'Mendelevium',cat:'actinide',mass:258,state:'Solid',group:15,period:7,col:15,row:9,desc:'Synthetic element. Named after Dmitri Mendeleev, creator of the periodic table.'},
+  {n:102,sym:'No',name:'Nobelium',cat:'actinide',mass:259,state:'Solid',group:16,period:7,col:16,row:9,desc:'Synthetic element. Named after Alfred Nobel. Very unstable.'},
+  {n:103,sym:'Lr',name:'Lawrencium',cat:'actinide',mass:266,state:'Solid',group:17,period:7,col:17,row:9,desc:'Last of the actinide series. Named after Ernest Lawrence.'},
+];
+
+// ═══════════════════════════════
+// REACTIONS DATABASE
+// ═══════════════════════════════
+const REACTIONS = [
+  {
+    reactants: ['H','H'],
+    type: 'synthesis',
+    title: 'Hydrogen Fusion',
+    equation: 'H + H → H₂',
+    desc: 'Two hydrogen atoms combine to form hydrogen gas. In stars, hydrogen nuclei fuse under immense pressure releasing enormous energy — this powers the sun.',
+    color: '#4a9eff',
+    particleColor: '#93c5fd'
+  },
+  {
+    reactants: ['H','O'],
+    type: 'combustion',
+    title: 'Water Formation',
+    equation: '2H₂ + O₂ → 2H₂O',
+    product: 'H₂O',
+    productName: 'Water',
+    productColor: '#06b6d4',
+    desc: 'Hydrogen combusts violently in oxygen — this is one of the most energetic reactions per unit mass, releasing 286 kJ/mol with a near-invisible flame. It powers rocket engines and fuel cells. The product is water.',
+    color: '#f97316',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Na','Cl'],
+    type: 'synthesis',
+    title: 'Sodium Chloride — Table Salt',
+    equation: '2Na + Cl₂ → 2NaCl',
+    product: 'NaCl',
+    productName: 'Sodium Chloride',
+    productColor: '#eab308',
+    desc: 'Sodium hands its outer electron directly to chlorine. Both atoms reach a full outer shell and snap together ionically. The result is NaCl — the salt you put on food. The reaction releases a bright yellow-orange flame and significant heat.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Na','H','O'],
+    type: 'explosion',
+    title: 'Sodium in Water → NaOH',
+    equation: '2Na + 2H₂O → 2NaOH + H₂↑',
+    product: 'NaOH',
+    productName: 'Sodium Hydroxide',
+    productColor: '#06b6d4',
+    desc: 'Sodium reacts violently with water — the H₂ gas produced immediately ignites in an orange fireball. But the real product left behind is sodium hydroxide (NaOH), a strongly alkaline solution with a pH near 14. The same lye used in soap-making and drain cleaners.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['K','H','O'],
+    type: 'explosion',
+    title: 'Potassium in Water → KOH',
+    equation: '2K + 2H₂O → 2KOH + H₂↑',
+    product: 'KOH',
+    productName: 'Potassium Hydroxide',
+    productColor: '#a855f7',
+    desc: 'Potassium reacts far more violently than sodium — the hydrogen ignites instantly with a distinctive LILAC/violet flame, sometimes shattering the beaker. The product is potassium hydroxide (KOH), an even stronger base than NaOH. Used in liquid soaps and batteries.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['H','Cl'],
+    type: 'acid',
+    title: 'Hydrochloric Acid (HCl)',
+    equation: 'H₂ + Cl₂ → 2HCl',
+    product: 'HCl',
+    productName: 'Hydrochloric Acid',
+    productColor: '#eab308',
+    desc: 'Hydrogen and chlorine combine to form hydrochloric acid, one of the strongest acids. The reaction is explosive in light. The fuming solution has a pH near 0 at high concentration.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['S','O'],
+    type: 'synthesis',
+    title: 'Sulfur Dioxide',
+    equation: 'S + O₂ → SO₂',
+    desc: 'Sulfur burns in oxygen to form sulfur dioxide, a pungent toxic gas. This is the first step in producing sulfuric acid (H₂SO₄), the most widely produced chemical in industry.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['H','S','O'],
+    type: 'acid',
+    title: 'Sulfuric Acid (H₂SO₄)',
+    equation: 'S + H₂O + O₂ → H₂SO₄',
+    desc: 'Formation of sulfuric acid, the world\'s most produced industrial chemical. It\'s extremely corrosive, vigorously dehydrates organic matter, and releases enormous heat when diluted.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['N','H'],
+    type: 'synthesis',
+    title: 'Ammonia (NH₃)',
+    equation: 'N₂ + 3H₂ → 2NH₃',
+    product: 'NH₃',
+    productName: 'Ammonia',
+    productColor: '#22c55e',
+    desc: 'The Haber process: nitrogen and hydrogen react under high temperature and pressure with an iron catalyst. Ammonia is essential for fertilizers feeding ~50% of humanity.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['C','O'],
+    type: 'combustion',
+    title: 'Carbon Combustion → CO₂',
+    equation: 'C + O₂ → CO₂',
+    product: 'CO₂',
+    productName: 'Carbon Dioxide',
+    productColor: '#f97316',
+    desc: 'Carbon burns completely in excess oxygen to form carbon dioxide. This is the primary reaction in burning fossil fuels and contributes to global warming.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Fe','O'],
+    type: 'synthesis',
+    title: 'Iron Oxide (Rust)',
+    equation: '4Fe + 3O₂ → 2Fe₂O₃',
+    product: 'Fe₂O₃',
+    productName: 'Iron Oxide (Rust)',
+    productColor: '#f97316',
+    desc: 'Iron slowly oxidizes in the presence of oxygen and water to form iron(III) oxide — rust. This reddish-brown compound is weaker than iron, causing structural degradation.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Mg','O'],
+    type: 'combustion',
+    title: 'Magnesium Blaze!',
+    equation: '2Mg + O₂ → 2MgO',
+    product: 'MgO',
+    productName: 'Magnesium Oxide',
+    productColor: '#ffffff',
+    desc: 'Magnesium burns with an intensely bright white flame (~3100°C). So bright it was used in early photography flash. The brilliant white light can damage retinas — never look directly!',
+    color: '#f97316',
+    particleColor: '#ffffff'
+  },
+  {
+    reactants: ['Cu','O'],
+    type: 'synthesis',
+    title: 'Copper Oxide',
+    equation: '2Cu + O₂ → 2CuO',
+    product: 'CuO',
+    productName: 'Copper Oxide',
+    productColor: '#22c55e',
+    desc: 'Copper oxidizes to form black copper(II) oxide, or in atmosphere the green patina seen on old bronze statues. The Statue of Liberty\'s green color comes from copper oxidation.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['H','N','O'],
+    type: 'acid',
+    title: 'Nitric Acid (HNO₃)',
+    equation: '3NO₂ + H₂O → 2HNO₃ + NO',
+    desc: 'Nitric acid forms through the Ostwald process. It\'s a fuming, highly corrosive acid that turns skin yellow (xanthoproteic reaction). Used in explosives and fertilizer production.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Na','O'],
+    type: 'combustion',
+    title: 'Sodium Oxide',
+    equation: '4Na + O₂ → 2Na₂O',
+    desc: 'Sodium burns in oxygen with a characteristic bright yellow flame to form sodium oxide. Na₂O is a basic oxide that reacts vigorously with water to form NaOH.',
+    color: '#f97316',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Cl','H','O'],
+    type: 'acid',
+    title: 'Hypochlorous Acid',
+    equation: 'Cl₂ + H₂O → HCl + HOCl',
+    desc: 'Chlorine dissolves in water to form hydrochloric acid and hypochlorous acid (HOCl). HOCl is the active sanitizing agent in pool chlorination and bleach solutions.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Ca','H','O'],
+    type: 'neutral',
+    title: 'Calcium Hydroxide (Slaked Lime)',
+    equation: 'Ca + 2H₂O → Ca(OH)₂ + H₂↑',
+    product: 'Ca(OH)₂',
+    productName: 'Calcium Hydroxide',
+    productColor: '#06b6d4',
+    desc: 'Calcium reacts with water to produce calcium hydroxide (slaked lime) and hydrogen gas. Ca(OH)₂ is used in cement, mortar, and water treatment. Moderately alkaline.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Ag','Cl'],
+    type: 'precipitate',
+    title: 'Silver Chloride Precipitate',
+    equation: 'Ag⁺ + Cl⁻ → AgCl↓',
+    product: 'AgCl',
+    productName: 'Silver Chloride',
+    productColor: '#a855f7',
+    desc: 'Silver ions react with chloride to form silver chloride, an insoluble white precipitate that turns purple-grey in light (photosensitive reaction used in photographic film).',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Pb','S'],
+    type: 'precipitate',
+    title: 'Lead Sulfide Precipitate',
+    equation: 'Pb²⁺ + S²⁻ → PbS↓',
+    desc: 'Lead sulfide forms as a dense black precipitate. This reaction was historically used in "lead chamber" photography and is used today in lead-acid battery chemistry.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['F','H'],
+    type: 'acid',
+    title: 'Hydrofluoric Acid (HF)',
+    equation: 'H₂ + F₂ → 2HF',
+    desc: 'Hydrofluoric acid is uniquely dangerous — it penetrates skin silently before causing severe internal damage. Used to etch glass and silicon wafers in semiconductor manufacturing.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Li','H','O'],
+    type: 'explosion',
+    title: 'Lithium in Water',
+    equation: '2Li + 2H₂O → 2LiOH + H₂↑',
+    desc: 'Lithium reacts with water more mildly than sodium but still vigorously, producing lithium hydroxide and hydrogen gas with a bright crimson-red flame. The solution is strongly alkaline.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['Au','Cl'],
+    type: 'synthesis',
+    title: 'Gold Chloride',
+    equation: 'Au + 3Cl → AuCl₃',
+    desc: 'Gold, usually inert, dissolves in "aqua regia" (HNO₃ + HCl) to form gold(III) chloride, a red-orange compound used to make gold nanoparticles and in photography.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['C','H'],
+    type: 'synthesis',
+    title: 'Methane Formation',
+    equation: 'C + 2H₂ → CH₄',
+    desc: 'Methane, the simplest hydrocarbon, forms from carbon and hydrogen at high temperature. Natural gas is ~90% methane. When burned: CH₄ + 2O₂ → CO₂ + 2H₂O.',
+    color: '#4a9eff',
+    particleColor: '#93c5fd'
+  },
+  {
+    reactants: ['N','O'],
+    type: 'synthesis',
+    title: 'Nitrogen Oxide (NO)',
+    equation: 'N₂ + O₂ → 2NO',
+    product: 'NO',
+    productName: 'Nitric Oxide',
+    productColor: '#f97316',
+    desc: 'At high temperatures (lightning, combustion), nitrogen and oxygen combine to form nitric oxide — a colorless toxic gas. In the atmosphere, it converts to NO₂, contributing to smog and acid rain.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Cs','H','O'],
+    type: 'explosion',
+    title: 'CESIUM EXPLOSION!',
+    equation: '2Cs + 2H₂O → 2CsOH + H₂↑ 💥',
+    desc: 'EXTREME REACTION! Cesium reacts EXPLOSIVELY with water, far more violently than potassium. The reaction is so forceful it shatters glass beakers. A brilliant violet flash precedes a powerful detonation.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['Na','H','C','O'],
+    type: 'synthesis',
+    title: 'Baking Soda (NaHCO₃)',
+    equation: 'Na⁺ + H⁺ + CO₃²⁻ → NaHCO₃',
+    desc: 'Sodium bicarbonate — baking soda! This white crystalline powder forms when sodium, hydrogen, carbon, and oxygen combine. When heated or mixed with acid it releases CO₂ gas, making baked goods rise. Also used as an antacid.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['Na','C','O'],
+    type: 'synthesis',
+    title: 'Sodium Carbonate (Washing Soda)',
+    equation: '2Na + C + 3O → Na₂CO₃',
+    desc: 'Sodium carbonate (washing soda / soda ash) is a common industrial chemical. It\'s a strong base used in glass manufacturing, detergents, and water softening. Forms a hydrated form Na₂CO₃·10H₂O when moist.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['C','H','O'],
+    type: 'synthesis',
+    title: 'Glucose (C₆H₁₂O₆)',
+    equation: '6C + 12H + 6O → C₆H₁₂O₆',
+    desc: 'The fundamental sugar of life! Glucose is produced by photosynthesis in plants and is the primary energy source for cellular respiration. Every cell in your body runs on it.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Ca','C','O'],
+    type: 'synthesis',
+    title: 'Calcium Carbonate (Limestone)',
+    equation: 'Ca + C + 3O → CaCO₃',
+    desc: 'Calcium carbonate is the main component of limestone, marble, chalk, and seashells. Used in cement production, antacids, and as a calcium supplement. Reacts with acids to release CO₂.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Fe','C'],
+    type: 'synthesis',
+    title: 'Steel (Iron-Carbon Alloy)',
+    equation: 'Fe + C → Fe₃C (cementite) / Steel',
+    desc: 'Adding carbon to iron creates steel, one of the most important materials in human civilization. Carbon atoms fit into gaps in the iron crystal lattice, dramatically increasing hardness and tensile strength.',
+    color: '#888780',
+    particleColor: '#b4b2a9'
+  },
+  {
+    reactants: ['Zn','Cl'],
+    type: 'synthesis',
+    title: 'Zinc Chloride',
+    equation: 'Zn + Cl₂ → ZnCl₂',
+    product: 'ZnCl₂',
+    productName: 'Zinc Chloride',
+    productColor: '#a855f7',
+    desc: 'Zinc burns in chlorine gas to form zinc chloride, a white deliquescent salt used as a flux in soldering and as a wood preservative.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Al','O'],
+    type: 'combustion',
+    title: 'Aluminium Oxide (Thermite)',
+    equation: '4Al + 3O₂ → 2Al₂O₃',
+    product: 'Al₂O₃',
+    productName: 'Aluminium Oxide',
+    productColor: '#fdba74',
+    desc: 'Aluminium burns at extremely high temperature to form aluminium oxide. This reaction (with iron oxide) powers the thermite reaction, used for welding railroad tracks.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Al','Cl'],
+    type: 'synthesis',
+    title: 'Aluminium Chloride',
+    equation: '2Al + 3Cl₂ → 2AlCl₃',
+    product: 'AlCl₃',
+    productName: 'Aluminium Chloride',
+    productColor: '#fde047',
+    desc: 'Aluminium reacts vigorously with chlorine gas, often glowing, to form aluminium chloride — a key catalyst in organic chemistry (Friedel-Crafts reactions).',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Ca','Cl'],
+    type: 'synthesis',
+    title: 'Calcium Chloride',
+    equation: 'Ca + Cl₂ → CaCl₂',
+    product: 'CaCl₂',
+    productName: 'Calcium Chloride',
+    productColor: '#86efac',
+    desc: 'Calcium reacts with chlorine gas to form calcium chloride, a salt widely used for de-icing roads and as a drying agent due to its strong hygroscopic properties.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['Mg','Cl'],
+    type: 'synthesis',
+    title: 'Magnesium Chloride',
+    equation: 'Mg + Cl₂ → MgCl₂',
+    product: 'MgCl₂',
+    productName: 'Magnesium Chloride',
+    productColor: '#86efac',
+    desc: 'Magnesium combines with chlorine to form magnesium chloride, used to de-ice roads, in tofu production (nigari), and as a magnesium supplement.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['Mg','N'],
+    type: 'synthesis',
+    title: 'Magnesium Nitride',
+    equation: '3Mg + N₂ → Mg₃N₂',
+    product: 'Mg₃N₂',
+    productName: 'Magnesium Nitride',
+    productColor: '#fdba74',
+    desc: 'Burning magnesium can also react directly with atmospheric nitrogen, forming magnesium nitride, a yellowish powder that reacts with water to release ammonia.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['K','Cl'],
+    type: 'synthesis',
+    title: 'Potassium Chloride',
+    equation: '2K + Cl₂ → 2KCl',
+    product: 'KCl',
+    productName: 'Potassium Chloride',
+    productColor: '#fde047',
+    desc: 'Potassium reacts with chlorine in a fierce lilac-flamed reaction to form potassium chloride — a common salt substitute and major component of fertilizers.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Li','Cl'],
+    type: 'synthesis',
+    title: 'Lithium Chloride',
+    equation: '2Li + Cl₂ → 2LiCl',
+    product: 'LiCl',
+    productName: 'Lithium Chloride',
+    productColor: '#fca5a5',
+    desc: 'Lithium burns with a crimson flame in chlorine gas to produce lithium chloride, a highly hygroscopic salt used in air conditioning desiccants and lithium battery electrolytes.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['Li','O'],
+    type: 'combustion',
+    title: 'Lithium Oxide',
+    equation: '4Li + O₂ → 2Li₂O',
+    product: 'Li₂O',
+    productName: 'Lithium Oxide',
+    productColor: '#fca5a5',
+    desc: 'Lithium burns in oxygen with a brilliant crimson-red flame to form lithium oxide, a white solid used in ceramics, glass production, and as a CO₂ scrubber in spacecraft.',
+    color: '#f97316',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['K','O'],
+    type: 'combustion',
+    title: 'Potassium Oxide',
+    equation: '4K + O₂ → 2K₂O',
+    product: 'K₂O',
+    productName: 'Potassium Oxide',
+    productColor: '#d8b4fe',
+    desc: 'Potassium burns in oxygen with a lilac flame to form potassium oxide, a strongly basic compound that reacts vigorously with water to form potassium hydroxide.',
+    color: '#f97316',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Ca','O'],
+    type: 'combustion',
+    title: 'Calcium Oxide (Quicklime)',
+    equation: '2Ca + O₂ → 2CaO',
+    product: 'CaO',
+    productName: 'Calcium Oxide',
+    productColor: '#67e8f9',
+    desc: 'Calcium burns in oxygen with a brick-red flame to form calcium oxide — quicklime. It reacts with water in an exothermic reaction to form slaked lime, Ca(OH)₂.',
+    color: '#f97316',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Zn','O'],
+    type: 'combustion',
+    title: 'Zinc Oxide',
+    equation: '2Zn + O₂ → 2ZnO',
+    product: 'ZnO',
+    productName: 'Zinc Oxide',
+    productColor: '#ffffff',
+    desc: 'Zinc burns in air with a bluish-green flame to form zinc oxide, a white powder used in sunscreen, ointments, rubber manufacturing, and as a pigment.',
+    color: '#f97316',
+    particleColor: '#ffffff'
+  },
+  {
+    reactants: ['Ti','O'],
+    type: 'synthesis',
+    title: 'Titanium Dioxide',
+    equation: 'Ti + O₂ → TiO₂',
+    product: 'TiO₂',
+    productName: 'Titanium Dioxide',
+    productColor: '#ffffff',
+    desc: 'Titanium reacts with oxygen to form titanium dioxide, the brilliant white pigment used in paints, sunscreens, and food coloring — and a photocatalyst for self-cleaning surfaces.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Ag','S'],
+    type: 'precipitate',
+    title: 'Silver Sulfide (Tarnish)',
+    equation: '2Ag + S → Ag₂S',
+    product: 'Ag₂S',
+    productName: 'Silver Sulfide',
+    productColor: '#888780',
+    desc: 'Silver reacts with sulfur compounds in air to form silver sulfide — the black tarnish that dulls silverware and jewelry over time.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Cu','S'],
+    type: 'precipitate',
+    title: 'Copper Sulfide',
+    equation: 'Cu + S → CuS',
+    product: 'CuS',
+    productName: 'Copper Sulfide',
+    productColor: '#888780',
+    desc: 'Copper combines directly with sulfur to form copper sulfide, a dark blue-black mineral. This reaction is the basis of the mineral covellite.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Ba','Cl'],
+    type: 'synthesis',
+    title: 'Barium Chloride',
+    equation: 'Ba + Cl₂ → BaCl₂',
+    product: 'BaCl₂',
+    productName: 'Barium Chloride',
+    productColor: '#fdba74',
+    desc: 'Barium combines with chlorine to form barium chloride, a toxic white salt used in fireworks (to produce green colors) and water treatment.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Ba','O'],
+    type: 'combustion',
+    title: 'Barium Peroxide',
+    equation: 'Ba + O₂ → BaO₂',
+    desc: 'Barium burns in oxygen to form barium peroxide, historically used to produce pure oxygen industrially via the Brin process before cryogenic distillation became common.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Sn','O'],
+    type: 'synthesis',
+    title: 'Tin Oxide',
+    equation: 'Sn + O₂ → SnO₂',
+    product: 'SnO₂',
+    productName: 'Tin Oxide',
+    productColor: '#93c5fd',
+    desc: 'Tin oxidizes to form tin dioxide, a hard ceramic compound used in glass coatings, gas sensors, and as an opacifier in ceramic glazes.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Pb','O'],
+    type: 'synthesis',
+    title: 'Lead Oxide',
+    equation: '2Pb + O₂ → 2PbO',
+    product: 'PbO',
+    productName: 'Lead Oxide',
+    productColor: '#fde047',
+    desc: 'Lead oxidizes slowly in air to form lead(II) oxide, a yellow-red compound historically used in glassmaking, ceramics, and old car batteries.',
+    color: '#888780',
+    particleColor: '#b4b2a9'
+  },
+  {
+    reactants: ['I','H'],
+    type: 'acid',
+    title: 'Hydroiodic Acid (HI)',
+    equation: 'H₂ + I₂ → 2HI',
+    desc: 'Hydrogen and iodine combine to form hydroiodic acid, one of the strongest mineral acids known. It readily decomposes back into its elements when heated.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Br','H'],
+    type: 'acid',
+    title: 'Hydrobromic Acid (HBr)',
+    equation: 'H₂ + Br₂ → 2HBr',
+    desc: 'Hydrogen reacts with bromine vapor to form hydrobromic acid, a strong acid used industrially to produce bromide salts and as a catalyst in organic synthesis.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Na','Br'],
+    type: 'synthesis',
+    title: 'Sodium Bromide',
+    equation: '2Na + Br₂ → 2NaBr',
+    product: 'NaBr',
+    productName: 'Sodium Bromide',
+    productColor: '#fca5a5',
+    desc: 'Sodium reacts with liquid bromine in a fiery reaction to form sodium bromide, once widely used as a sedative and still used today in photography and well-drilling fluids.',
+    color: '#ef4444',
+    particleColor: '#fca5a5'
+  },
+  {
+    reactants: ['P','O'],
+    type: 'combustion',
+    title: 'Phosphorus Pentoxide',
+    equation: 'P₄ + 5O₂ → P₄O₁₀',
+    product: 'P₄O₁₀',
+    productName: 'Phosphorus Pentoxide',
+    productColor: '#ffffff',
+    desc: 'White phosphorus burns spontaneously in air with a bright glow to form phosphorus pentoxide, an extremely powerful drying agent used in chemical synthesis.',
+    color: '#f97316',
+    particleColor: '#ffffff'
+  },
+  {
+    reactants: ['P','Cl'],
+    type: 'synthesis',
+    title: 'Phosphorus Trichloride',
+    equation: 'P₄ + 6Cl₂ → 4PCl₃',
+    product: 'PCl₃',
+    productName: 'Phosphorus Trichloride',
+    productColor: '#d8b4fe',
+    desc: 'Phosphorus reacts with chlorine gas to produce phosphorus trichloride, a fuming corrosive liquid that is a key intermediate in producing pesticides and flame retardants.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Na','I'],
+    type: 'synthesis',
+    title: 'Sodium Iodide',
+    equation: '2Na + I₂ → 2NaI',
+    product: 'NaI',
+    productName: 'Sodium Iodide',
+    productColor: '#d8b4fe',
+    desc: 'Sodium reacts with iodine to form sodium iodide, a colorless salt used as a source of dietary iodine and in radiation detector crystals.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Cr','O'],
+    type: 'synthesis',
+    title: 'Chromium(III) Oxide',
+    equation: '4Cr + 3O₂ → 2Cr₂O₃',
+    product: 'Cr₂O₃',
+    productName: 'Chromium Oxide',
+    productColor: '#86efac',
+    desc: 'Chromium oxidizes to form chromium(III) oxide, a vivid green pigment used in paints, ceramics, and as a precursor for chrome plating.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['N','F'],
+    type: 'synthesis',
+    title: 'Nitrogen Trifluoride (NF₃)',
+    equation: 'N₂ + 3F₂ → 2NF₃',
+    product: 'NF₃',
+    productName: 'Nitrogen Trifluoride',
+    productColor: '#67e8f9',
+    desc: 'Nitrogen reacts with fluorine to form nitrogen trifluoride, a colourless, toxic gas used in plasma etching of semiconductors and in the manufacture of flat panel displays.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Cu','H','S','O'],
+    type: 'synthesis',
+    title: 'Copper Sulfate (CuSO₄)',
+    equation: 'Cu + 2H₂SO₄(conc.) → CuSO₄ + SO₂↑ + 2H₂O',
+    product: 'CuSO₄',
+    productName: 'Copper Sulfate',
+    productColor: '#06b6d4',
+    desc: 'Copper dissolves in hot concentrated sulfuric acid to form copper sulfate, releasing sulfur dioxide. The brilliant blue crystals of CuSO₄·5H₂O are used in electroplating and as a fungicide.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['Fe','S'],
+    type: 'synthesis',
+    title: 'Iron Sulfide (Pyrite)',
+    equation: 'Fe + S → FeS',
+    product: 'FeS',
+    productName: 'Iron Sulfide',
+    productColor: '#eab308',
+    desc: 'Iron combines directly with sulfur to form iron sulfide, a black solid also known as fool\'s gold when crystallized. Used in sulfuric acid production.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Ni','Cl'],
+    type: 'synthesis',
+    title: 'Nickel Chloride',
+    equation: 'Ni + Cl₂ → NiCl₂',
+    product: 'NiCl₂',
+    productName: 'Nickel Chloride',
+    productColor: '#a855f7',
+    desc: 'Nickel reacts with chlorine gas to form nickel chloride, a green compound used in electroplating and as a catalyst in organic synthesis.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Co','O'],
+    type: 'combustion',
+    title: 'Cobalt Oxide',
+    equation: '4Co + O₂ → 2Co₂O₃',
+    product: 'Co₂O₃',
+    productName: 'Cobalt Oxide',
+    productColor: '#a855f7',
+    desc: 'Cobalt oxidizes to form cobalt oxide, a dark blue compound used as a pigment in ceramics and glass, producing intense blue colors.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Zn','H','O'],
+    type: 'neutral',
+    title: 'Zinc Hydroxide',
+    equation: 'Zn + 2H₂O → Zn(OH)₂ + H₂↑',
+    product: 'Zn(OH)₂',
+    productName: 'Zinc Hydroxide',
+    productColor: '#86efac',
+    desc: 'Zinc reacts slowly with water to form zinc hydroxide, an amphoteric compound that dissolves in both acids and strong bases.',
+    color: '#22c55e',
+    particleColor: '#86efac'
+  },
+  {
+    reactants: ['N','O','Cl'],
+    type: 'acid',
+    title: 'Nitrogen Dioxide → NO₂',
+    equation: '2NO + O₂ → 2NO₂',
+    product: 'NO₂',
+    productName: 'Nitrogen Dioxide',
+    productColor: '#f97316',
+    desc: 'Nitric oxide reacts with more oxygen to form nitrogen dioxide, a brown toxic gas that is a major air pollutant and component of photochemical smog.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['S','Cl'],
+    type: 'synthesis',
+    title: 'Sulfur Dichloride',
+    equation: 'S + Cl₂ → S₂Cl₂',
+    product: 'S₂Cl₂',
+    productName: 'Sulfur Monochloride',
+    productColor: '#eab308',
+    desc: 'Sulfur reacts with chlorine gas to form sulfur monochloride, a reddish-yellow liquid used as a vulcanizing agent for rubber.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Mn','O'],
+    type: 'combustion',
+    title: 'Manganese Oxide',
+    equation: '3Mn + 2O₂ → Mn₃O₄',
+    product: 'Mn₃O₄',
+    productName: 'Manganese Oxide',
+    productColor: '#888780',
+    desc: 'Manganese oxidizes to form manganese oxide, a mixed-valence compound used as a catalyst, pigment, and in battery production.',
+    color: '#888780',
+    particleColor: '#b4b2a9'
+  },
+  {
+    reactants: ['H','O','O'],
+    type: 'synthesis',
+    title: 'Hydrogen Peroxide (H₂O₂)',
+    equation: 'H₂ + O₂ → H₂O₂',
+    product: 'H₂O₂',
+    productName: 'Hydrogen Peroxide',
+    productColor: '#06b6d4',
+    desc: 'Hydrogen and excess oxygen combine to form hydrogen peroxide, a strong oxidiser used as a bleach and disinfectant. At high concentrations it is used as rocket propellant.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['P','S'],
+    type: 'synthesis',
+    title: 'Phosphorus Sesquisulfide',
+    equation: 'P + S → P₂S₃',
+    product: 'P₂S₃',
+    productName: 'Phosphorus Sesquisulfide',
+    productColor: '#eab308',
+    desc: 'Phosphorus reacts with sulfur to form phosphorus sesquisulfide, used in matchsticks as the striking surface component.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['As','O'],
+    type: 'combustion',
+    title: 'Arsenic Trioxide',
+    equation: '4As + 3O₂ → 2As₂O₃',
+    product: 'As₂O₃',
+    productName: 'Arsenic Trioxide',
+    productColor: '#ffffff',
+    desc: 'Arsenic oxidizes to form arsenic trioxide, a highly toxic white powder historically used in pesticides and now in cancer treatment.',
+    color: '#f97316',
+    particleColor: '#ffffff'
+  },
+  {
+    reactants: ['Sb','O'],
+    type: 'combustion',
+    title: 'Antimony Trioxide',
+    equation: '4Sb + 3O₂ → 2Sb₂O₃',
+    product: 'Sb₂O₃',
+    productName: 'Antimony Trioxide',
+    productColor: '#fde047',
+    desc: 'Antimony oxidizes to form antimony trioxide, a white powder used as a flame retardant in textiles and polymers.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Si','O'],
+    type: 'combustion',
+    title: 'Silicon Dioxide (Quartz)',
+    equation: 'Si + O₂ → SiO₂',
+    product: 'SiO₂',
+    productName: 'Silicon Dioxide',
+    productColor: '#ffffff',
+    desc: 'Silicon burns in oxygen to form silicon dioxide, the main component of sand and quartz. Used in glass, ceramics, and microchips.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['B','O'],
+    type: 'combustion',
+    title: 'Boron Trioxide',
+    equation: '4B + 3O₂ → 2B₂O₃',
+    product: 'B₂O₃',
+    productName: 'Boron Trioxide',
+    productColor: '#fde047',
+    desc: 'Boron burns brightly in oxygen to form boron trioxide, used in borosilicate glass and as a flux in welding and brazing.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['Hg','S'],
+    type: 'precipitate',
+    title: 'Mercury Sulfide (Cinnabar)',
+    equation: 'Hg + S → HgS',
+    product: 'HgS',
+    productName: 'Mercury Sulfide',
+    productColor: '#ef4444',
+    desc: 'Mercury combines with sulfur to form mercury sulfide, the brilliant red mineral cinnabar — historically used as a pigment.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Sn','S'],
+    type: 'synthesis',
+    title: 'Tin Sulfide',
+    equation: 'Sn + S → SnS',
+    product: 'SnS',
+    productName: 'Tin Sulfide',
+    productColor: '#888780',
+    desc: 'Tin reacts with sulfur to form tin sulfide, a brown-grey compound used in some semiconductor applications and pyrotechnics.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['W','O'],
+    type: 'combustion',
+    title: 'Tungsten Trioxide',
+    equation: '2W + 3O₂ → 2WO₃',
+    product: 'WO₃',
+    productName: 'Tungsten Trioxide',
+    productColor: '#fde047',
+    desc: 'Tungsten oxidizes to form tungsten trioxide, a yellow compound used in gas sensors, catalysts, and as a precursor for tungsten metal production.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['Mo','O'],
+    type: 'combustion',
+    title: 'Molybdenum Trioxide',
+    equation: '2Mo + 3O₂ → 2MoO₃',
+    product: 'MoO₃',
+    productName: 'Molybdenum Trioxide',
+    productColor: '#fde047',
+    desc: 'Molybdenum oxidizes to form molybdenum trioxide, a white-yellow solid used as a catalyst in petroleum refining and chemical synthesis.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['V','O'],
+    type: 'combustion',
+    title: 'Vanadium Pentoxide',
+    equation: '4V + 5O₂ → 2V₂O₅',
+    product: 'V₂O₅',
+    productName: 'Vanadium Pentoxide',
+    productColor: '#fde047',
+    desc: 'Vanadium oxidizes to form vanadium pentoxide, a reddish-orange powder used as a catalyst in sulfuric acid production.',
+    color: '#f97316',
+    particleColor: '#fdba74'
+  },
+  {
+    reactants: ['N','C'],
+    type: 'synthesis',
+    title: 'Cyanide (C≡N⁻)',
+    equation: 'C + N → CN⁻',
+    product: 'CN',
+    productName: 'Cyanide Ion',
+    productColor: '#a855f7',
+    desc: 'Carbon and nitrogen can form cyanide ion under extreme conditions. Cyanide is highly toxic but also appears in nitriles and many organic compounds.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['H','P'],
+    type: 'synthesis',
+    title: 'Phosphine Gas',
+    equation: 'P + H₂ → PH₃',
+    product: 'PH₃',
+    productName: 'Phosphine',
+    productColor: '#a855f7',
+    desc: 'Phosphorus reacts with hydrogen to form phosphine, a highly toxic and flammable gas used in semiconductor manufacturing.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['H','S'],
+    type: 'synthesis',
+    title: 'Hydrogen Sulfide',
+    equation: 'H₂ + S → H₂S',
+    product: 'H₂S',
+    productName: 'Hydrogen Sulfide',
+    productColor: '#fde047',
+    desc: 'Hydrogen burns in sulfur vapor to form hydrogen sulfide, a colorless toxic gas with a rotten egg smell. Found in crude oil and volcanic gases.',
+    color: '#eab308',
+    particleColor: '#fde047'
+  },
+  {
+    reactants: ['N','Cl'],
+    type: 'synthesis',
+    title: 'Nitrogen Trichloride',
+    equation: 'N₂ + 3Cl₂ → 2NCl₃',
+    product: 'NCl₃',
+    productName: 'Nitrogen Trichloride',
+    productColor: '#d8b4fe',
+    desc: 'Nitrogen reacts with excess chlorine under UV light to form nitrogen trichloride, an oily explosive yellow liquid used as a flour bleaching agent and pool disinfectant.',
+    color: '#a855f7',
+    particleColor: '#d8b4fe'
+  },
+  {
+    reactants: ['Cl','O'],
+    type: 'synthesis',
+    title: 'Chlorine Oxide',
+    equation: 'Cl₂ + O₂ → Cl₂O',
+    product: 'Cl₂O',
+    productName: 'Dichlorine Monoxide',
+    productColor: '#06b6d4',
+    desc: 'Chlorine reacts with oxygen to form dichlorine monoxide, a toxic reddish-yellow gas used as a bleaching and disinfecting agent.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+  {
+    reactants: ['B','N'],
+    type: 'synthesis',
+    title: 'Boron Nitride',
+    equation: 'B₂O₃ + 2NH₃ → 2BN + 3H₂O',
+    product: 'BN',
+    productName: 'Boron Nitride',
+    productColor: '#ffffff',
+    desc: 'Boron and nitrogen react to form boron nitride, a material with a crystal structure identical to graphite or diamond. Cubic BN is the second hardest material known — used as an industrial abrasive.',
+    color: '#06b6d4',
+    particleColor: '#67e8f9'
+  },
+];
+
+
+// ═══════════════════════════════
+// STATE
+// ═══════════════════════════════
+let vessels = [];
+let vesselIdCounter = 0;
+let selectedVesselId = null;
+let draggingElement = null;
+let draggingChip = null;   // tracks which stage chip is being dragged
+let pouringVesselId = null;
+let reactionLog = [];
+let timer = { running: false, time: 0, max: 60, interval: null };
+let dragOffset = { x: 0, y: 0 };
+let isDraggingVessel = false;
+let draggingVesselId = null;
+
+// ═══════════════════════════════
+// PERIODIC TABLE RENDERING
+// ═══════════════════════════════
+
+function renderLandingPT() {
+  const grid = document.getElementById('ptLanding');
+  grid.innerHTML = '';
+
+  // Build 9-row x 18-col grid
+  const cells = Array(9).fill(null).map(() => Array(18).fill(null));
+
+  for (const el of ELEMENTS) {
+    const r = el.row - 1;
+    const c = el.col - 1;
+    if (r >= 0 && r < 9 && c >= 0 && c < 18) {
+      cells[r][c] = el;
+    }
+  }
+
+  let activeLandingCat = null;
+  const allPtEls = [];
+
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 18; col++) {
+      const el = cells[row][col];
+      const div = document.createElement('div');
+
+      // F-block placeholder cells (period 6 col 3 and period 7 col 3)
+      const isFBlockPlaceholder = (row === 5 || row === 6) && col === 2;
+
+      if (isFBlockPlaceholder) {
+        div.className = 'pt-element';
+        const label = row === 5 ? '57–71' : '89–103';
+        const catClass = row === 5 ? 'cat-lanthanide' : 'cat-actinide';
+        div.className = `pt-element ${catClass}`;
+        div.innerHTML = `<span class="num" style="font-size:0.5rem;opacity:0.7">${label}</span><span class="sym" style="font-size:0.45rem">*</span>`;
+        div.title = row === 5 ? 'Lanthanides (see below)' : 'Actinides (see below)';
+        div.style.cursor = 'default';
+        div.style.opacity = '0.5';
+      } else if (el) {
+        const cat = CATEGORIES[el.cat];
+        div.className = 'pt-element cat-' + el.cat;
+        div.innerHTML = `<span class="num">${el.n}</span><span class="sym">${el.sym}</span>`;
+        div.title = el.name;
+        div.dataset.cat = el.cat;
+        div.addEventListener('mouseenter', (e) => showTooltip(e, el));
+        div.addEventListener('mouseleave', hideTooltip);
+        div.style.cursor = 'pointer';
+        allPtEls.push(div);
+      } else {
+        div.className = 'pt-element';
+        div.style.background = 'transparent';
+      }
+
+      grid.appendChild(div);
+    }
+  }
+
+  // Legend — clicking a legend item highlights/dims periodic table elements by category
+  const legend = document.getElementById('ptLegend');
+  legend.innerHTML = '';
+  for (const [key, cat] of Object.entries(CATEGORIES)) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.style.cssText = 'cursor:pointer;padding:3px 8px;border-radius:8px;border:1px solid transparent;transition:all 0.15s;';
+    item.innerHTML = `<div class="legend-dot" style="background:${cat.bg};border:1px solid ${cat.color}40"></div>${cat.label}`;
+    item.addEventListener('click', () => {
+      const same = activeLandingCat === key;
+      activeLandingCat = same ? null : key;
+      // Update legend styles
+      legend.querySelectorAll('.legend-item').forEach((li, i) => {
+        const k = Object.keys(CATEGORIES)[i];
+        const active = activeLandingCat === k;
+        li.style.background = active ? CATEGORIES[k].bg : 'transparent';
+        li.style.borderColor = active ? CATEGORIES[k].color + '60' : 'transparent';
+        li.style.opacity = (!activeLandingCat || active) ? '1' : '0.4';
+      });
+      // Dim/highlight PT cells
+      allPtEls.forEach(el => {
+        if (!activeLandingCat) {
+          el.style.opacity = '1'; el.style.transform = '';
+        } else if (el.dataset.cat === activeLandingCat) {
+          el.style.opacity = '1'; el.style.transform = 'scale(1.08)';
+        } else {
+          el.style.opacity = '0.2'; el.style.transform = '';
+        }
+      });
+    });
+    item.addEventListener('mouseenter', () => { if (!activeLandingCat) item.style.background = cat.bg + '80'; });
+    item.addEventListener('mouseleave', () => { if (!activeLandingCat) item.style.background = 'transparent'; });
+    legend.appendChild(item);
+  }
+}
+
+// ═══════════════════════════════
+// SANDBOX ELEMENT LIST
+// ═══════════════════════════════
+let activeCatFilter = null;
+
+function setAtomQty(n) {
+  document.getElementById('atomQty').value = n;
+  document.querySelectorAll('.qty-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.qty) === n);
+  });
+}
+
+function buildElementList() {
+  const catFilter = document.getElementById('catFilter');
+  catFilter.innerHTML = '';
+  // Reset filter state on rebuild to avoid visual/data desync (bug w9)
+  activeCatFilter = null;
+
+  for (const [key, cat] of Object.entries(CATEGORIES)) {
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip cat-' + key;
+    chip.textContent = cat.label.split(' ')[0];
+    chip.style.background = cat.bg;
+    chip.style.color = cat.color;
+    chip.dataset.cat = key;
+    chip.onclick = () => {
+      activeCatFilter = activeCatFilter === key ? null : key;
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === activeCatFilter));
+      renderElementList();
+    };
+    catFilter.appendChild(chip);
+  }
+
+  renderElementList();
+}
+
+function renderElementList() {
+  const search = document.getElementById('elSearch').value.toLowerCase();
+  const list = document.getElementById('elementList');
+  list.innerHTML = '';
+
+  const filtered = ELEMENTS.filter(el => {
+    const matchSearch = !search || el.sym.toLowerCase().includes(search) || el.name.toLowerCase().includes(search) || String(el.n).includes(search);
+    const matchCat = !activeCatFilter || el.cat === activeCatFilter;
+    return matchSearch && matchCat;
+  });
+
+  for (const el of filtered) {
+    const cat = CATEGORIES[el.cat];
+    const item = document.createElement('div');
+    item.className = 'el-item';
+    item.draggable = true;
+    item.dataset.sym = el.sym;
+
+    item.innerHTML = `
+      <div class="el-badge" style="background:${cat.bg};color:${cat.color}">${el.sym}</div>
+      <div class="el-info">
+        <div class="el-sym">${el.sym}</div>
+        <div class="el-name">${el.name}</div>
+      </div>
+      <button class="el-add-btn" title="Add to selected vessel" style="background:${cat.bg};color:${cat.color}">+</button>
+    `;
+
+    item.addEventListener('dragstart', (e) => {
+      draggingElement = el;
+      draggingChip = null; // this is from the panel, not a stage chip
+      e.dataTransfer.setData('text/plain', el.sym);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+
+    item.addEventListener('dragend', () => {
+      setTimeout(() => { draggingElement = null; }, 100);
+    });
+
+    // Click the + button to add to the selected vessel (touch-friendly)
+    item.querySelector('.el-add-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!selectedVesselId) {
+        // If no vessel selected, select/use first vessel
+        if (vessels.length === 0) { showToast('Add a vessel first!'); return; }
+        selectedVesselId = vessels[0].id;
+      }
+      const v = vessels.find(v => v.id === selectedVesselId);
+      if (!v) return;
+      const qty = parseInt(document.getElementById('atomQty')?.value || '1', 10) || 1;
+      for (let i = 0; i < qty; i++) v.contents.push(el);
+      addBubbles(selectedVesselId);
+      renderVessel(selectedVesselId);
+      updateVesselInfo();
+      // flash the button
+      const btn = e.target;
+      btn.textContent = '✓'; btn.style.background = '#22c55e'; btn.style.color = '#fff';
+      setTimeout(() => { btn.textContent = '+'; btn.style.background = cat.bg; btn.style.color = cat.color; }, 600);
+      const symsForCheck = expandSyms(v.contents);
+      if ([...new Set(symsForCheck)].length >= 2) setTimeout(() => checkAutoReaction(selectedVesselId), 500);
+    });
+
+    item.addEventListener('mouseenter', (e) => showTooltip(e, el));
+    item.addEventListener('mouseleave', hideTooltip);
+
+    list.appendChild(item);
+  }
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-msg">No elements found</div>';
+  }
+}
+
+function filterElements() { renderElementList(); }
+
+// Simple toast notification
+function showToast(msg) {
+  let t = document.getElementById('chemToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'chemToast';
+    t.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border2);color:var(--text2);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.78rem;z-index:9999;pointer-events:none;transition:opacity 0.3s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 2000);
+}
+
+// ═══════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════
+function showTooltip(e, el) {
+  const cat = CATEGORIES[el.cat];
+  const tt = document.getElementById('tooltip');
+  tt.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <div style="width:36px;height:36px;border-radius:6px;background:${cat.bg};color:${cat.color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem">${el.sym}</div>
+      <div>
+        <div class="tt-name" style="color:${cat.color};font-weight:600">${el.name}</div>
+        <div class="tt-info">#${el.n} · ${cat.label}</div>
+      </div>
+    </div>
+    <div class="tt-info" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:4px">
+      Mass: ${el.mass} u · ${el.state}<br>
+      ${el.desc}
+    </div>
+  `;
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+
+function moveTooltip(e) {
+  const tt = document.getElementById('tooltip');
+  let x = e.clientX + 12, y = e.clientY + 12;
+  const ttW = 210, ttH = 130;
+  if (x + ttW > window.innerWidth) x = e.clientX - ttW - 8;
+  if (y + ttH > window.innerHeight) y = e.clientY - ttH - 8;
+  tt.style.left = x + 'px';
+  tt.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+document.addEventListener('mousemove', (e) => {
+  const tt = document.getElementById('tooltip');
+  if (tt.style.display === 'block') moveTooltip(e);
+});
+
+// ═══════════════════════════════
+// VESSELS
+// ═══════════════════════════════
+let _svgRenderCount = 0;
+const VESSEL_TYPES = {
+  beaker: {
+    w: 90, h: 110,
+    svg: (id, contents, color) => {
+      const uid = `b${id}_${++_svgRenderCount}`;
+      const fillH = Math.min(contents.length * 12, 68);
+      const prod = contents.find(e => e.isProduct);
+      const labels = prod
+        ? `<text x="45" y="65" font-size="9" fill="${prod.color||'#22c55e'}" font-weight="700" text-anchor="middle">${prod.sym}</text>`
+        : contents.slice(0,4).map((e,i)=>{
+            const c=CATEGORIES[e.cat]||{color:'#8ba3cc'};
+            return `<text x="${20+(i%4)*14}" y="${75-Math.floor(i/4)*14}" font-size="8" fill="${c.color}" font-weight="700" text-anchor="middle">${e.sym}</text>`;
+          }).join('');
+      return `<svg width="90" height="110" viewBox="0 0 90 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><clipPath id="${uid}"><rect x="14" y="10" width="62" height="75"/></clipPath></defs>
+        <path d="M15 10 L15 80 Q15 90 25 90 L65 90 Q75 90 75 80 L75 10 Z" fill="rgba(100,160,255,0.06)" stroke="rgba(100,160,255,0.4)" stroke-width="1.5"/>
+        <rect x="15" y="${90-fillH}" width="60" height="${fillH}" fill="${color}" opacity="0.3" clip-path="url(#${uid})" style="transition:all 0.5s"/>
+        <path d="M10 10 L80 10 L75 5 L70 10" fill="rgba(100,160,255,0.06)" stroke="rgba(100,160,255,0.4)" stroke-width="1.5"/>
+        <line x1="72" y1="70" x2="78" y2="70" stroke="rgba(100,160,255,0.3)" stroke-width="1"/>
+        <line x1="72" y1="55" x2="78" y2="55" stroke="rgba(100,160,255,0.3)" stroke-width="1"/>
+        <line x1="72" y1="40" x2="78" y2="40" stroke="rgba(100,160,255,0.3)" stroke-width="1"/>
+        <text x="45" y="103" text-anchor="middle" font-size="9" fill="rgba(100,160,255,0.5)">BEAKER</text>
+        ${labels}
+      </svg>`;
+    }
+  },
+  flask: {
+    w: 80, h: 120,
+    svg: (id, contents, color) => {
+      const uid = `f${id}_${++_svgRenderCount}`;
+      const fillY = 110 - Math.min(contents.length * 15, 65);
+      const prod = contents.find(e => e.isProduct);
+      const labels = prod
+        ? `<text x="40" y="92" font-size="9" fill="${prod.color||'#22c55e'}" font-weight="700" text-anchor="middle">${prod.sym}</text>`
+        : contents.slice(0,3).map((e,i)=>{
+            const c=CATEGORIES[e.cat]||{color:'#8ba3cc'};
+            return `<text x="${25+i*15}" y="92" font-size="9" fill="${c.color}" font-weight="700" text-anchor="middle">${e.sym}</text>`;
+          }).join('');
+      return `<svg width="80" height="120" viewBox="0 0 80 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><clipPath id="${uid}"><path d="M5 75 Q5 110 40 110 Q75 110 75 75 Q75 55 55 40 L55 10 L25 10 L25 40 Z"/></clipPath></defs>
+        <rect x="28" y="5" width="24" height="35" rx="3" fill="rgba(100,160,255,0.06)" stroke="rgba(100,160,255,0.35)" stroke-width="1.5"/>
+        <path d="M5 75 Q5 110 40 110 Q75 110 75 75 Q75 55 55 40 L25 40 Q5 55 5 75 Z" fill="rgba(100,160,255,0.06)" stroke="rgba(100,160,255,0.35)" stroke-width="1.5"/>
+        <path d="M5 ${fillY} Q5 110 40 110 Q75 110 75 ${fillY} Z" fill="${color}" opacity="0.3" clip-path="url(#${uid})" style="transition:all 0.5s"/>
+        <rect x="26" y="1" width="28" height="7" rx="3" fill="rgba(100,160,255,0.15)" stroke="rgba(100,160,255,0.3)" stroke-width="1"/>
+        <text x="40" y="115" text-anchor="middle" font-size="9" fill="rgba(100,160,255,0.5)">FLASK</text>
+        ${labels}
+      </svg>`;
+    }
+  },
+  tube: {
+    w: 40, h: 120,
+    svg: (id, contents, color) => {
+      const uid = `t${id}_${++_svgRenderCount}`;
+      const fillY = 105 - Math.min(contents.length * 20, 95);
+      const prod = contents.find(e => e.isProduct);
+      // Show up to 4 items with overflow indicator; fixed for tubes showing only 2
+      const visItems = contents.filter((e,i,a)=>a.findIndex(x=>x.sym===e.sym)===i).slice(0,4);
+      const extra = contents.filter((e,i,a)=>a.findIndex(x=>x.sym===e.sym)===i).length - 4;
+      const labels = prod
+        ? `<text x="20" y="90" font-size="8" fill="${prod.color||'#22c55e'}" font-weight="700" text-anchor="middle">${prod.sym}</text>`
+        : visItems.map((e,i)=>{
+            const c=CATEGORIES[e.cat]||{color:'#8ba3cc'};
+            return `<text x="20" y="${90-i*13}" font-size="7" fill="${c.color}" font-weight="700" text-anchor="middle">${e.sym}</text>`;
+          }).join('') + (extra>0?`<text x="20" y="${90-visItems.length*13}" font-size="6" fill="rgba(255,255,255,0.4)" text-anchor="middle">+${extra}</text>`:'');
+      return `<svg width="40" height="120" viewBox="0 0 40 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><clipPath id="${uid}"><rect x="8" y="5" width="24" height="100"/></clipPath></defs>
+        <path d="M8 5 L8 95 Q8 112 20 112 Q32 112 32 95 L32 5 Z" fill="rgba(100,160,255,0.06)" stroke="rgba(100,160,255,0.35)" stroke-width="1.5"/>
+        <path d="M9 ${fillY} L9 95 Q9 111 20 111 Q31 111 31 95 L31 ${fillY} Z" fill="${color}" opacity="0.35" clip-path="url(#${uid})" style="transition:all 0.5s"/>
+        <rect x="5" y="0" width="30" height="8" rx="3" fill="rgba(100,160,255,0.15)" stroke="rgba(100,160,255,0.3)" stroke-width="1"/>
+        ${labels}
+      </svg>`;
+    }
+  }
+};
+
+function getVesselColor(contents) {
+  if (!contents.length) return '#4a9eff';
+  // If vessel has a product compound, use its color
+  const prod = contents.find(e => e.isProduct);
+  if (prod) return prod.color || '#22c55e';
+  const syms = contents.map(e => e.sym).sort();
+  const key = syms.join('-');
+  for (const r of REACTIONS) {
+    const rs = [...r.reactants].sort();
+    if (rs.join('-') === key || syms.some(s => rs.includes(s))) return r.color;
+  }
+  const cat = CATEGORIES[contents[0].cat];
+  return cat ? cat.color : '#4a9eff';
+}
+
+function addVessel(type) {
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  // Guard against 0-size rect if sandbox isn't fully painted yet
+  const stageW = Math.max(rect.width, 600);
+  const stageH = Math.max(rect.height, 400);
+
+  const id = ++vesselIdCounter;
+  const x = 80 + Math.random() * Math.max(0, stageW - 220);
+  const y = 60 + Math.random() * Math.max(0, stageH - 200);
+
+  vessels.push({ id, type, x, y, contents: [], animating: false });
+  renderVessel(id);
+}
+
+function renderVessel(id) {
+  const stage = document.getElementById('stage');
+  const v = vessels.find(v => v.id === id);
+  if (!v) return;
+
+  let el = document.getElementById('vessel-wrap-' + id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'vessel-wrap-' + id;
+    el.className = 'vessel-wrap';
+    stage.appendChild(el);
+  }
+
+  const vt = VESSEL_TYPES[v.type];
+  const color = getVesselColor(v.contents);
+  // Don't overwrite position if vessel is mid-pour animation
+  if (!v.animating) {
+    el.style.left = v.x + 'px';
+    el.style.top = v.y + 'px';
+  }
+  el.style.zIndex = v.id === selectedVesselId ? 30 : 10;
+
+  const isPourSource = pouringVesselId === id;
+  const isPourTarget = pouringVesselId !== null && pouringVesselId !== id;
+
+  el.innerHTML = `
+    <div class="vessel-btn-row">
+      ${!isPourSource && !isPourTarget && v.contents.length > 0 ? `<button class="vbtn vbtn-pour" onclick="startPour(${id})">🫗 Pour</button>` : ''}
+      ${!isPourTarget && v.contents.length >= 2 ? `<button class="vbtn vbtn-mix" onclick="triggerReaction(${id})">⚗ Mix</button>` : ''}
+      ${!isPourTarget && v.contents.length === 1 ? `<span style="font-size:0.58rem;color:rgba(100,160,255,0.45);padding:4px 8px">Add more →</span>` : ''}
+    </div>
+    ${isPourSource ? '<div class="pour-hint">🧪 Click another vessel to pour into</div>' : ''}
+    <div class="vessel ${v.id === selectedVesselId ? 'vessel-active' : ''}"
+      id="vessel-${id}"
+      ondragover="onVesselDragOver(event, ${id})"
+      ondragleave="onVesselDragLeave(event, ${id})"
+      ondrop="onVesselDrop(event, ${id})"
+      onclick="${isPourTarget ? `receivePour(${id})` : `selectVessel(${id})`}"
+      onmousedown="${isPourTarget ? '' : `startDragVessel(event, ${id})`}"
+      style="cursor:${isPourTarget ? 'copy' : 'grab'};position:relative">
+      <div style="pointer-events:none">${vt.svg(id, v.contents, color)}</div>
+      <div style="position:absolute;inset:0;z-index:2;pointer-events:none"></div>
+    </div>
+  `;
+
+  if (isPourSource) el.classList.add('pour-source');
+  else el.classList.remove('pour-source');
+
+  if (isPourTarget) el.classList.add('pour-target');
+  else el.classList.remove('pour-target');
+}
+
+function selectVessel(id) {
+  selectedVesselId = id;
+  vessels.forEach(v => renderVessel(v.id));
+  updateVesselInfo();
+}
+
+function updateVesselInfo() {
+  const infoDiv = document.getElementById('vesselInfo');
+  const v = vessels.find(v => v.id === selectedVesselId);
+  if (!v) {
+    infoDiv.innerHTML = '<div class="empty-msg">Click a vessel to select</div>';
+    return;
+  }
+
+  const cat = v.type.charAt(0).toUpperCase() + v.type.slice(1);
+  infoDiv.innerHTML = `
+    <div class="stat-row"><span class="s-key">Type</span><span class="s-val">${cat}</span></div>
+    <div class="stat-row"><span class="s-key">Contents</span><span class="s-val">${v.contents.length > 0 ? v.contents.map(e=>e.sym).join(', ') : 'Empty'}</span></div>
+    ${v.contents.length ? `
+      <div style="margin-top:8px">
+        <div style="font-size:0.65rem;color:var(--text3);margin-bottom:4px">CONTENTS</div>
+        <div class="beaker-list">
+          ${[...new Set(v.contents.map(e=>e.sym))].map(sym => {
+            const item = v.contents.find(e => e.sym === sym);
+            const count = v.contents.filter(e => e.sym === sym).length;
+            if (item.isProduct) {
+              return `<div class="b-item">
+                <span class="b-name" style="color:${item.color || '#22c55e'}">⚗ ${sym} (${item.name})</span>
+                <span class="b-count" style="background:rgba(34,197,94,0.2);color:#86efac">compound</span>
+              </div>`;
+            }
+            const el = ELEMENTS.find(e => e.sym === sym);
+            if (!el) return '';
+            const elCat = CATEGORIES[el.cat];
+            return `<div class="b-item">
+              <span class="b-name" style="color:${elCat.color}">${sym} (${el.name})</span>
+              <span class="b-count">×${count}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <button onclick="triggerReaction(${v.id})" style="margin-top:8px;width:100%;padding:0.4rem;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--purple));border:none;color:#fff;font-size:0.75rem;font-weight:600;cursor:pointer">⚗ Mix & React</button>
+      <button onclick="startPour(${v.id})" style="margin-top:4px;width:100%;padding:0.4rem;border-radius:8px;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.4);color:#67e8f9;font-size:0.75rem;font-weight:600;cursor:pointer">🫗 Pour into another vessel</button>
+      <button onclick="clearVessel(${v.id})" style="margin-top:4px;width:100%;padding:0.35rem;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--text3);font-size:0.7rem;cursor:pointer">Clear vessel</button>
+    ` : '<div class="empty-msg">Drag elements here</div>'}
+    <button onclick="removeVessel(${v.id})" style="margin-top:6px;width:100%;padding:0.35rem;border-radius:8px;background:transparent;border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:0.7rem;cursor:pointer">Remove vessel</button>
+  `;
+}
+
+// ═══════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════
+function onStageDrop(event) {
+  event.preventDefault();
+  if (!draggingElement) return;
+
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  const x = event.clientX - rect.left - 24;
+  const y = event.clientY - rect.top - 24;
+
+  // spawnStageElement on empty stage area
+  spawnStageElement(draggingElement, x, y);
+  draggingElement = null;
+}
+
+function spawnStageElement(el, x, y) {
+  const stage = document.getElementById('stage');
+  const cat = CATEGORIES[el.cat];
+  const div = document.createElement('div');
+  div.className = 'stage-element';
+  div.style.left = x + 'px';
+  div.style.top = y + 'px';
+  div.style.background = cat.bg;
+  div.style.color = cat.color;
+  div.style.borderColor = cat.color + '40';
+  div.draggable = true;
+  div.dataset.sym = el.sym;
+
+  div.innerHTML = `<span class="se-num">${el.n}</span><span class="se-sym">${el.sym}</span>`;
+
+  div.addEventListener('dragstart', (e) => {
+    draggingElement = el;
+    draggingChip = div;   // track this chip so onVesselDrop can remove it
+    e.dataTransfer.setData('text/plain', el.sym);
+  });
+
+  div.addEventListener('dragend', () => {
+    // If chip wasn't consumed by a vessel drop, clear the reference
+    setTimeout(() => { if (draggingChip === div) draggingChip = null; draggingElement = null; }, 100);
+  });
+
+  // Make it draggable within stage
+  div.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    const startX = e.clientX - parseInt(div.style.left);
+    const startY = e.clientY - parseInt(div.style.top);
+    const move = (ev) => {
+      const stage = document.getElementById('stage');
+      const rect = stage.getBoundingClientRect();
+      div.style.left = (ev.clientX - startX) + 'px';
+      div.style.top = (ev.clientY - startY) + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+
+  stage.appendChild(div);
+}
+
+function onVesselDragOver(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'copy';
+  document.getElementById('vessel-' + id)?.classList.add('drag-over');
+}
+
+function onVesselDragLeave(e, id) {
+  // Only remove if we're truly leaving the vessel (not entering a child)
+  const rel = e.relatedTarget;
+  const vesselEl = document.getElementById('vessel-' + id);
+  if (!vesselEl || vesselEl.contains(rel)) return;
+  vesselEl.classList.remove('drag-over');
+}
+
+function onVesselDrop(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('vessel-' + id)?.classList.remove('drag-over');
+
+  // Use the global draggingElement — most reliable cross-browser
+  let el = draggingElement;
+
+  // Fallback: try dataTransfer sym
+  if (!el) {
+    const sym = e.dataTransfer.getData('text/plain');
+    el = ELEMENTS.find(e => e.sym === sym);
+  }
+
+  if (!el) return;
+
+  const v = vessels.find(v => v.id === id);
+  if (!v) return;
+
+  // Push the currently-selected quantity of this atom
+  const qty = parseInt(document.getElementById('atomQty')?.value || '1', 10) || 1;
+  for (let i = 0; i < qty; i++) v.contents.push(el);
+
+  draggingElement = null;
+
+  // Remove any stage-element chip that was the drag source
+  if (draggingChip) { draggingChip.remove(); draggingChip = null; }
+
+  addBubbles(id);
+  renderVessel(id);
+
+  if (selectedVesselId === id) updateVesselInfo();
+
+  // Auto-react if 2+ unique element types
+  const uniqueSyms = expandSyms(v.contents);
+  if ([...new Set(uniqueSyms)].length >= 2) {
+    setTimeout(() => checkAutoReaction(id), 500);
+  }
+}
+
+function addBubbles(vesselId) {
+  const el = document.getElementById('vessel-wrap-' + vesselId);
+  if (!el) return;
+  const vEl = el.querySelector('.vessel');
+  if (!vEl) return;
+
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.style.width = b.style.height = (3 + Math.random() * 5) + 'px';
+      b.style.left = (20 + Math.random() * 50) + 'px';
+      b.style.bottom = '30px';
+      b.style.animationDelay = (Math.random() * 0.3) + 's';
+      vEl.style.position = 'relative';
+      vEl.appendChild(b);
+      setTimeout(() => b.remove(), 1500);
+    }, i * 100);
+  }
+}
+
+// ═══════════════════════════════
+// VESSEL DRAGGING
+// ═══════════════════════════════
+function startDragVessel(e, id) {
+  if (e.button !== 0) return;
+  const wrap = document.getElementById('vessel-wrap-' + id);
+  if (!wrap) return;
+
+  isDraggingVessel = true;
+  draggingVesselId = id;
+  const wr = wrap.getBoundingClientRect();
+  const stage = document.getElementById('stage');
+  const sr = stage.getBoundingClientRect();
+  dragOffset.x = e.clientX - (wr.left - sr.left);
+  dragOffset.y = e.clientY - (wr.top - sr.top);
+
+  const move = (ev) => {
+    if (!isDraggingVessel) return;
+    const stage = document.getElementById('stage');
+    const rect = stage.getBoundingClientRect();
+    const v = vessels.find(v => v.id === id);
+    if (v) {
+      v.x = Math.max(0, Math.min(rect.width - 100, ev.clientX - dragOffset.x));
+      v.y = Math.max(0, Math.min(rect.height - 130, ev.clientY - dragOffset.y));
+      wrap.style.left = v.x + 'px';
+      wrap.style.top = v.y + 'px';
+    }
+  };
+
+  const up = () => {
+    isDraggingVessel = false;
+    draggingVesselId = null;
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+  };
+
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
+// ═══════════════════════════════
+// REACTIONS
+// ═══════════════════════════════
+// Map product formulas back to the element symbols that formed them.
+// Used so a finished compound (e.g. H₂O) can still react further when
+// poured onto/mixed with a NEW reactive element (e.g. Na + H₂O → NaOH).
+const PRODUCT_COMPONENTS = {
+  'H₂O':     ['H','O'],
+  'NaCl':    ['Na','Cl'],
+  'NaOH':    ['Na','H','O'],
+  'KOH':     ['K','H','O'],
+  'HCl':     ['H','Cl'],
+  'NH₃':     ['N','H'],
+  'Fe₂O₃':  ['Fe','O'],
+  'MgO':     ['Mg','O'],
+  'CuO':     ['Cu','O'],
+  'Ca(OH)₂': ['Ca','H','O'],
+  'AgCl':    ['Ag','Cl'],
+  'H₂SO₄':  ['H','S','O'],
+  'SO₂':     ['S','O'],
+  'CO₂':     ['C','O'],
+  'HF':      ['H','F'],
+  'HNO₃':   ['H','N','O'],
+  'NaHCO₃': ['Na','H','C','O'],
+  'Na₂CO₃': ['Na','C','O'],
+  'CH₄':     ['C','H'],
+  'NO':      ['N','O'],
+  'ZnCl₂':  ['Zn','Cl'],
+  'Al₂O₃':  ['Al','O'],
+  'AlCl₃':  ['Al','Cl'],
+  'CaCl₂':  ['Ca','Cl'],
+  'MgCl₂':  ['Mg','Cl'],
+  'Mg₃N₂':  ['Mg','N'],
+  'KCl':     ['K','Cl'],
+  'LiCl':    ['Li','Cl'],
+  'Li₂O':   ['Li','O'],
+  'K₂O':    ['K','O'],
+  'CaO':     ['Ca','O'],
+  'ZnO':     ['Zn','O'],
+  'TiO₂':   ['Ti','O'],
+  'Ag₂S':   ['Ag','S'],
+  'CuS':     ['Cu','S'],
+  'BaCl₂':  ['Ba','Cl'],
+  'SnO₂':   ['Sn','O'],
+  'PbO':     ['Pb','O'],
+  'NaBr':    ['Na','Br'],
+  'P₄O₁₀':  ['P','O'],
+  'PCl₃':   ['P','Cl'],
+  'NaI':     ['Na','I'],
+  'Cr₂O₃':  ['Cr','O'],
+  // New 25 products
+  'NO₂':     ['N','O'],
+  'CuSO₄':  ['Cu','H','S','O'],
+  'FeS':     ['Fe','S'],
+  'NiCl₂':  ['Ni','Cl'],
+  'Co₂O₃':  ['Co','O'],
+  'Zn(OH)₂': ['Zn','H','O'],
+  'S₂Cl₂':  ['S','Cl'],
+  'Mn₃O₄':  ['Mn','O'],
+  'H₂O₂':   ['H','O'],
+  'P₂S₃':   ['P','S'],
+  'As₂O₃':  ['As','O'],
+  'Sb₂O₃':  ['Sb','O'],
+  'SiO₂':   ['Si','O'],
+  'B₂O₃':   ['B','O'],
+  'HgS':    ['Hg','S'],
+  'SnS':    ['Sn','S'],
+  'WO₃':    ['W','O'],
+  'MoO₃':   ['Mo','O'],
+  'V₂O₅':   ['V','O'],
+  'CN':     ['C','N'],
+  'PH₃':    ['P','H'],
+  'H₂S':    ['H','S'],
+  'N₂O':    ['N','O'],
+  'Cl₂O':   ['Cl','O'],
+  'P₄O₆':   ['P','O'],
+};
+
+function expandSyms(contents) {
+  // Raw elements always participate directly.
+  // A finished product compound only "re-opens" to its component elements
+  // when it's sitting alongside something else in the vessel (i.e. it was
+  // just poured/mixed with a new reagent). If the vessel contains ONLY that
+  // single product and nothing else, it's a settled, stable result and
+  // should NOT be decomposed — this prevents an explosion-producing reaction
+  // (e.g. Na + H₂O → NaOH) from re-matching itself forever once the product
+  // (NaOH, which also contains Na/H/O) sits alone in the vessel.
+  //
+  // Returns an ARRAY with duplicates preserved so atom counts are retained.
+  // e.g. [H, O, O] stays ['H','O','O'], not ['H','O'].
+  const result = [];
+  // Only expand products when raw elements are also present (chain reaction scenario)
+  const hasRawElements = contents.some(i => !i.isProduct);
+
+  for (const item of contents) {
+    if (item.isProduct) {
+      if (hasRawElements && PRODUCT_COMPONENTS[item.sym]) {
+        PRODUCT_COMPONENTS[item.sym].forEach(s => result.push(s));
+      }
+      // else: settled product alone or with other products only — don't decompose
+    } else {
+      result.push(item.sym);
+    }
+  }
+  return result;
+}
+
+function findReaction(syms) {
+  // syms may contain duplicates (e.g. ['H','O','O'] for H + 2×O).
+  // Build a count map so we can do multiset matching.
+  const symCount = {};
+  for (const s of syms) symCount[s] = (symCount[s] || 0) + 1;
+  const symSet = new Set(syms);
+
+  // Collect all reactions where EVERY reactant symbol is present in the vessel.
+  // A reactant list like ['H','O','O'] requires at least 2 oxygen atoms.
+  const candidates = REACTIONS.filter(r => {
+    const rCount = {};
+    for (const s of r.reactants) rCount[s] = (rCount[s] || 0) + 1;
+    return Object.entries(rCount).every(([s, n]) => (symCount[s] || 0) >= n);
+  });
+
+  if (!candidates.length) return null;
+
+  // Pick the candidate whose reactant list is the LONGEST (most specific match).
+  candidates.sort((a, b) => b.reactants.length - a.reactants.length);
+
+  // Prefer exact multiset match (vessel has exactly the reactants, no extras).
+  const best = candidates[0];
+  const exact = candidates.find(r => {
+    const rs = [...r.reactants].sort().join(',');
+    const ss = [...syms].sort().join(',');
+    return rs === ss;
+  });
+
+  return exact || best;
+}
+
+function checkAutoReaction(id) {
+  const v = vessels.find(v => v.id === id);
+  if (!v) return;
+  // Expand products to elements before matching — preserve duplicates for count-based matching
+  const syms = expandSyms(v.contents);
+  const reaction = findReaction(syms);
+  if (reaction) {
+    setTimeout(() => triggerReactionFromContents(id, syms), 300);
+  }
+}
+
+function triggerReactionFromContents(id, syms) {
+  const v = vessels.find(v => v.id === id);
+  if (!v) return;
+  const reaction = findReaction(syms || expandSyms(v.contents));
+  if (!reaction) { showNoReaction(v); return; }
+  showReaction(reaction, id);
+}
+
+function triggerReaction(id) {
+  const v = vessels.find(v => v.id === id);
+  if (!v || v.contents.length < 2) return;
+
+  const syms = expandSyms(v.contents);
+  const reaction = findReaction(syms);
+
+  if (!reaction) {
+    showNoReaction(v);
+    return;
+  }
+
+  showReaction(reaction, id);
+}
+
+function showNoReaction(v) {
+  const syms = v.contents.map(e => e.sym).join(' + ');
+  showReactionCard({
+    type: 'neutral',
+    title: 'No Notable Reaction',
+    equation: syms + ' → No significant reaction',
+    desc: `These elements don't have a notable chemical interaction in this simulator. Try adding different elements or check a chemistry reference for exotic reactions.`,
+    color: '#8ba3cc',
+    particleColor: '#8ba3cc'
+  }, v.id, false);
+}
+
+function showReaction(reaction, vesselId) {
+  const v = vessels.find(v => v.id === vesselId);
+  if (!v) return;
+
+  // Animate vessel shake — use CSS animation class to avoid recursive-setTimeout races
+  const vesselWrap = document.getElementById('vessel-wrap-' + vesselId);
+  if (vesselWrap) {
+    vesselWrap.classList.remove('vessel-shaking'); // reset if already shaking
+    void vesselWrap.offsetWidth; // force reflow to restart animation
+    vesselWrap.classList.add('vessel-shaking');
+    setTimeout(() => vesselWrap.classList.remove('vessel-shaking'), 600);
+  }
+
+  if (reaction.type === 'explosion') {
+    triggerExplosion(v.x + 45, v.y + 55);
+  } else {
+    spawnParticles(v.x + 45, v.y + 55, reaction.particleColor);
+  }
+
+  // Replace vessel contents with product after a short delay
+  if (reaction.product) {
+    setTimeout(() => {
+      v.contents = [{ sym: reaction.product, name: reaction.productName, cat: 'product', isProduct: true, color: reaction.productColor }];
+      renderVessel(vesselId);
+      if (selectedVesselId === vesselId) updateVesselInfo();
+    }, reaction.type === 'explosion' ? 900 : 500);
+  }
+
+  showReactionCard(reaction, vesselId, true);
+  addToLog(reaction);
+
+  // Reset + restart the timer for each reaction so it always shows 0→60s per reaction
+  resetTimer();
+  timer.running = true;
+  startTimer();
+  document.getElementById('playBtn').textContent = '⏸';
+}
+
+function showReactionCard(reaction, vesselId, hasReaction) {
+  const overlay = document.getElementById('reactionOverlay');
+  overlay.style.display = 'flex';
+
+  const typeLabel = {
+    explosion: '💥 Explosive Reaction',
+    acid: '⚗ Acid Formation',
+    synthesis: '✨ Synthesis',
+    neutral: '💧 Neutral / Base',
+    precipitate: '🔵 Precipitate',
+    combustion: '🔥 Combustion',
+  }[reaction.type] || '⚗ Reaction';
+
+  const productHTML = reaction.product ? `
+    <div style="display:flex;align-items:center;gap:10px;margin:0.6rem 0;padding:0.6rem 0.9rem;background:var(--bg3);border-radius:10px;border:1px solid ${reaction.productColor}40">
+      <div style="width:42px;height:42px;border-radius:8px;background:${reaction.productColor}22;border:1px solid ${reaction.productColor}60;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;color:${reaction.productColor};flex-shrink:0">${reaction.product}</div>
+      <div>
+        <div style="font-size:0.7rem;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase">Product Formed</div>
+        <div style="font-size:0.95rem;font-weight:700;color:${reaction.productColor}">${reaction.productName}</div>
+      </div>
+      <div style="margin-left:auto;font-size:1.3rem">✅</div>
+    </div>
+  ` : '';
+
+  overlay.innerHTML = `
+    <div class="reaction-card">
+      <button class="close-btn" onclick="closeReaction()">✕</button>
+      <div class="r-type r-${reaction.type}">${typeLabel}</div>
+      <div class="r-title" style="color:${reaction.color}">${reaction.title}</div>
+      <div class="r-equation">${reaction.equation}</div>
+      ${productHTML}
+      <div class="r-desc">${reaction.desc}</div>
+      ${hasReaction ? `
+        <div style="display:flex;gap:6px;margin-top:0.75rem;flex-wrap:wrap">
+          <button onclick="clearVessel(${vesselId});closeReaction()" style="padding:0.35rem 0.9rem;border-radius:8px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:0.75rem;cursor:pointer">Reset Vessel</button>
+          <button onclick="closeReaction()" style="padding:0.35rem 0.9rem;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--purple));border:none;color:#fff;font-size:0.75rem;font-weight:600;cursor:pointer">Continue</button>
+        </div>
+      ` : `<button onclick="closeReaction()" style="margin-top:0.75rem;padding:0.35rem 0.9rem;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:0.75rem;cursor:pointer">OK</button>`}
+    </div>
+  `;
+}
+
+function closeReaction() {
+  document.getElementById('reactionOverlay').style.display = 'none';
+}
+
+// ═══════════════════════════════
+// EFFECTS
+// ═══════════════════════════════
+function triggerExplosion(cx, cy) {
+  const stage = document.getElementById('stage');
+  const container = document.createElement('div');
+  container.className = 'explosion-fx';
+  container.style.left = cx + 'px';
+  container.style.top = cy + 'px';
+  stage.appendChild(container);
+
+  for (let i = 0; i < 24; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'spark';
+    const angle = (i / 24) * Math.PI * 2;
+    const dist = 60 + Math.random() * 80;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist;
+    spark.style.setProperty('--tx', tx + 'px');
+    spark.style.setProperty('--ty', ty + 'px');
+    spark.style.background = ['#ef4444','#f97316','#eab308','#fff'][Math.floor(Math.random()*4)];
+    spark.style.animationDuration = (0.4 + Math.random() * 0.6) + 's';
+    spark.style.animationDelay = (Math.random() * 0.2) + 's';
+    container.appendChild(spark);
+  }
+
+  setTimeout(() => container.remove(), 1200);
+}
+
+function spawnParticles(cx, cy, color) {
+  const stage = document.getElementById('stage');
+  for (let i = 0; i < 12; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = 4 + Math.random() * 6;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.background = color;
+      p.style.left = (cx + (Math.random()-0.5)*20) + 'px';
+      p.style.top = (cy + (Math.random()-0.5)*20) + 'px';
+      const dx = (Math.random()-0.5)*80;
+      const dy = -40 - Math.random()*60;
+      p.style.setProperty('--dx', dx + 'px');
+      p.style.setProperty('--dy', dy + 'px');
+      p.style.animationDuration = (0.6 + Math.random() * 0.8) + 's';
+      stage.appendChild(p);
+      setTimeout(() => p.remove(), 1400);
+    }, i * 30);
+  }
+}
+
+// ═══════════════════════════════
+// VESSEL MANAGEMENT
+// ═══════════════════════════════
+function clearVessel(id) {
+  const v = vessels.find(v => v.id === id);
+  if (v) {
+    v.contents = [];
+    renderVessel(id);
+    if (selectedVesselId === id) updateVesselInfo();
+  }
+}
+
+function removeVessel(id) {
+  const el = document.getElementById('vessel-wrap-' + id);
+  if (el) el.remove();
+  vessels = vessels.filter(v => v.id !== id);
+  if (selectedVesselId === id) {
+    selectedVesselId = null;
+    updateVesselInfo();
+  }
+  if (pouringVesselId === id) cancelPour();
+}
+
+function clearAll() {
+  vessels.forEach(v => {
+    const el = document.getElementById('vessel-wrap-' + v.id);
+    if (el) el.remove();
+  });
+  vessels = [];
+  selectedVesselId = null;
+  pouringVesselId = null;
+  updateVesselInfo();
+  document.querySelectorAll('.stage-element').forEach(e => e.remove());
+  document.getElementById('pourCancelBtn').classList.remove('visible');
+  document.getElementById('stage').classList.remove('pour-mode');
+}
+
+// ═══════════════════════════════
+// POUR MODE
+// ═══════════════════════════════
+function startPour(id) {
+  const v = vessels.find(v => v.id === id);
+  if (!v || v.contents.length === 0) return;
+
+  pouringVesselId = id;
+  document.getElementById('stage').classList.add('pour-mode');
+  document.getElementById('pourCancelBtn').classList.add('visible');
+
+  // Re-render all vessels so pour-source/target classes apply
+  vessels.forEach(v => renderVessel(v.id));
+  updateVesselInfo();
+}
+
+function cancelPour() {
+  pouringVesselId = null;
+  document.getElementById('stage').classList.remove('pour-mode');
+  document.getElementById('pourCancelBtn').classList.remove('visible');
+  vessels.forEach(v => renderVessel(v.id));
+  updateVesselInfo();
+}
+
+function onStageClick(e) {
+  // If in pour mode and clicked empty stage (not a vessel), cancel
+  if (pouringVesselId !== null && e.target.id === 'stage') {
+    cancelPour();
+  }
+}
+
+function receivePour(targetId) {
+  if (pouringVesselId === null || pouringVesselId === targetId) return;
+
+  const src = vessels.find(v => v.id === pouringVesselId);
+  const tgt = vessels.find(v => v.id === targetId);
+  if (!src || !tgt) return;
+
+  // Lock further clicks during the animation
+  document.getElementById('stage').classList.remove('pour-mode');
+  document.getElementById('pourCancelBtn').classList.remove('visible');
+
+  // Animate the pour (move src near tgt, tilt, pour, move back), then merge contents
+  animatePour(src, tgt, () => {
+    // Merge src contents into target
+    tgt.contents.push(...src.contents);
+    src.contents = [];
+
+    pouringVesselId = null;
+    vessels.forEach(v => renderVessel(v.id));
+
+    // Select the target vessel
+    selectedVesselId = targetId;
+    updateVesselInfo();
+
+    // Auto-react if 2+ unique elements
+    const unique = expandSyms(tgt.contents);
+    if (unique.length >= 2) {
+      setTimeout(() => checkAutoReaction(targetId), 400);
+    }
+  });
+}
+
+function animatePour(src, tgt, onComplete) {
+  const stage = document.getElementById('stage');
+  const srcWrap = document.getElementById('vessel-wrap-' + src.id);
+  const tgtWrap = document.getElementById('vessel-wrap-' + tgt.id);
+  if (!srcWrap || !tgtWrap) { onComplete(); return; }
+
+  // Mark as animating so renderVessel won't reposition it mid-animation
+  src.animating = true;
+
+  // Remember original position (don't mutate src.x/y until we're done)
+  const origX = src.x;
+  const origY = src.y;
+
+  // Decide which side to approach from
+  const approachFromLeft = src.x <= tgt.x;
+  const offsetX = approachFromLeft ? -85 : 85;
+  const hoverX = Math.max(0, tgt.x + offsetX);
+  const hoverY = Math.max(0, tgt.y - 70);
+
+  const pourColor = getVesselColor(src.contents);
+
+  // STEP 1: glide the source vessel toward the target (DOM only, don't mutate data)
+  srcWrap.classList.add('pour-animating');
+  srcWrap.style.left = hoverX + 'px';
+  srcWrap.style.top = hoverY + 'px';
+
+  const vt = VESSEL_TYPES[src.type];
+  const vesselEl = srcWrap.querySelector('.vessel');
+
+  setTimeout(() => {
+    // STEP 2: tilt
+    srcWrap.classList.add('pour-active');
+    if (vesselEl) {
+      vesselEl.style.transformOrigin = approachFromLeft ? '85% 10%' : '15% 10%';
+      vesselEl.style.transform = approachFromLeft ? 'rotate(-62deg)' : 'rotate(62deg)';
+      vesselEl.style.transition = 'transform 0.4s cubic-bezier(0.34,1.2,0.64,1)';
+    }
+
+    // Compute pour arc endpoints
+    const sx = hoverX + (vt.w / 2) + (approachFromLeft ? vt.w * 0.32 : -vt.w * 0.32);
+    const sy = hoverY + 6;
+    const tx = tgt.x + (VESSEL_TYPES[tgt.type].w / 2);
+    const ty = tgt.y + 14;
+    const midX = (sx + tx) / 2;
+    const midY = Math.min(sy, ty) - 50;
+
+    setTimeout(() => {
+      // STEP 3: draw pour arc using Web Animations API (works in all browsers)
+      const arcEl = document.createElement('div');
+      arcEl.className = 'pour-arc';
+      arcEl.style.cssText = 'left:0;top:0;width:100%;height:100%;position:absolute;pointer-events:none;z-index:60';
+      const ns = 'http://www.w3.org/2000/svg';
+      const svgEl = document.createElementNS(ns, 'svg');
+      svgEl.setAttribute('width','100%'); svgEl.setAttribute('height','100%');
+      svgEl.style.cssText = 'position:absolute;inset:0;overflow:visible;pointer-events:none';
+
+      const makePath = (sw, color, op) => {
+        const p = document.createElementNS(ns, 'path');
+        p.setAttribute('d', `M ${sx} ${sy} Q ${midX} ${midY} ${tx} ${ty}`);
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', color);
+        p.setAttribute('stroke-width', sw);
+        p.setAttribute('stroke-linecap', 'round');
+        p.setAttribute('opacity', op);
+        p.setAttribute('stroke-dasharray', '300');
+        p.setAttribute('stroke-dashoffset', '300');
+        return p;
+      };
+
+      const path1 = makePath(6, pourColor, '0.75');
+      const path2 = makePath(2, 'white', '0.3');
+      svgEl.appendChild(path1); svgEl.appendChild(path2);
+      arcEl.appendChild(svgEl);
+      stage.appendChild(arcEl);
+
+      // Animate using Web Animations API — cross-browser including Firefox
+      [path1, path2].forEach(p => {
+        p.animate([{strokeDashoffset:'300'},{strokeDashoffset:'0'}],
+          {duration:600, easing:'ease-in', fill:'forwards'});
+      });
+
+      // Splash drops
+      setTimeout(() => {
+        for (let i = 0; i < 8; i++) {
+          const drop = document.createElement('div');
+          drop.className = 'splash-drop';
+          const size = 4 + Math.random() * 6;
+          drop.style.cssText = `width:${size}px;height:${size}px;background:${pourColor};opacity:0.8;left:${tx-4+(Math.random()-0.5)*20}px;top:${ty-4}px;`;
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 10 + Math.random() * 22;
+          drop.style.setProperty('--sx', Math.cos(angle) * dist + 'px');
+          drop.style.setProperty('--sy', Math.sin(angle) * dist - 10 + 'px');
+          drop.style.animationDelay = (Math.random() * 0.1) + 's';
+          stage.appendChild(drop);
+          setTimeout(() => drop.remove(), 700);
+        }
+        addBubbles(tgt.id);
+      }, 480);
+
+      // STEP 4: clean up, un-tilt, glide back
+      setTimeout(() => {
+        arcEl.remove();
+        srcWrap.classList.remove('pour-active');
+        if (vesselEl) { vesselEl.style.transform = ''; }
+
+        setTimeout(() => {
+          // Now commit data position back to original
+          src.x = origX; src.y = origY;
+          srcWrap.style.left = origX + 'px';
+          srcWrap.style.top = origY + 'px';
+
+          setTimeout(() => {
+            srcWrap.classList.remove('pour-animating');
+            src.animating = false;
+            if (vesselEl) { vesselEl.style.transition = ''; vesselEl.style.transformOrigin = ''; }
+            onComplete();
+          }, 580);
+        }, 250);
+      }, 700);
+    }, 420);
+  }, 560);
+}
+
+// ═══════════════════════════════
+// LOG
+// ═══════════════════════════════
+function addToLog(reaction) {
+  const log = document.getElementById('reactionLog');
+
+  const empty = log.querySelector('.empty-msg');
+  if (empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = `log-item log-${reaction.type}`;
+  item.innerHTML = `<strong>${reaction.title}</strong><br><span style="color:var(--text3)">${reaction.equation}</span>`;
+  log.prepend(item);
+
+  reactionLog.push(reaction);
+}
+
+function clearLog() {
+  document.getElementById('reactionLog').innerHTML = '<div class="empty-msg">No reactions yet</div>';
+  reactionLog = [];
+}
+
+// ═══════════════════════════════
+// TIMER
+// ═══════════════════════════════
+function startTimer() {
+  if (timer.interval) clearInterval(timer.interval);
+  timer.interval = setInterval(() => {
+    if (!timer.running) return;
+    timer.time = Math.min(timer.time + 0.1, timer.max);
+    const pct = (timer.time / timer.max) * 100;
+    document.getElementById('timeFill').style.width = pct + '%';
+    document.getElementById('timeVal').textContent = timer.time.toFixed(1) + 's';
+
+    if (timer.time >= timer.max) {
+      timer.running = false;
+      clearInterval(timer.interval);
+      document.getElementById('playBtn').textContent = '▶';
+    }
+  }, 100);
+}
+
+function toggleTimer() {
+  if (timer.running) {
+    timer.running = false;
+    document.getElementById('playBtn').textContent = '▶';
+  } else {
+    timer.running = true;
+    document.getElementById('playBtn').textContent = '⏸';
+    startTimer();
+  }
+}
+
+function resetTimer() {
+  timer.running = false;
+  timer.time = 0;
+  if (timer.interval) clearInterval(timer.interval);
+  document.getElementById('timeFill').style.width = '0%';
+  document.getElementById('timeVal').textContent = '0.0s';
+  document.getElementById('playBtn').textContent = '▶';
+}
+
+// ═══════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════
+let elementListBuilt = false;
+
+function openSandbox() {
+  hideTooltip();
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('learnPage').style.display = 'none';
+  document.getElementById('sandbox').style.display = 'flex';
+  if (!elementListBuilt) { buildElementList(); elementListBuilt = true; }
+  if (!vessels.length) {
+    // Use rAF to ensure the stage has layout before reading its dimensions
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        addVessel('beaker');
+        addVessel('flask');
+      });
+    });
+  }
+}
+
+function showLanding() {
+  hideTooltip();
+  // Stop timer to avoid interval leak
+  if (timer.interval) clearInterval(timer.interval);
+  timer.running = false;
+  document.getElementById('sandbox').style.display = 'none';
+  document.getElementById('learnPage').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+}
+
+function showLearn() {
+  hideTooltip();
+  if (timer.interval) clearInterval(timer.interval);
+  timer.running = false;
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('sandbox').style.display = 'none';
+  document.getElementById('learnPage').style.display = 'flex';
+}
+
+// ═══════════════════════════════
+// INIT
+// ═══════════════════════════════
+renderLandingPT();
+</script>
+</body>
+</html>
